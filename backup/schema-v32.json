@@ -1,0 +1,173 @@
+{
+  "tables": {
+    "apps": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('apps_id_seq'::regclass)"},
+        {"name": "name", "type": "text", "nullable": false, "default": null},
+        {"name": "about", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "url", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "status", "type": "text", "nullable": false, "default": "'unconf'::text"},
+        {"name": "note", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "changed", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "sort", "type": "integer", "nullable": false, "default": "100"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"},
+        {"name": "grp", "type": "text", "nullable": false, "default": "'main'::text"},
+        {"name": "quick", "type": "boolean", "nullable": false, "default": "false"},
+        {"name": "qsort", "type": "integer", "nullable": false, "default": "0"},
+        {"name": "short", "type": "text", "nullable": false, "default": "''::text"}
+      ],
+      "indexes": [
+        {"name": "apps_pkey", "unique": true, "columns": ["id"]}
+      ]
+    },
+    "brief_top3": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": true, "default": null},
+        {"name": "project", "type": "text", "nullable": true, "default": null},
+        {"name": "kind", "type": "text", "nullable": true, "default": null},
+        {"name": "text", "type": "text", "nullable": true, "default": null},
+        {"name": "due_on", "type": "date", "nullable": true, "default": null},
+        {"name": "waiting_on", "type": "text", "nullable": true, "default": null},
+        {"name": "waiting_since", "type": "date", "nullable": true, "default": null},
+        {"name": "reason", "type": "text", "nullable": true, "default": null},
+        {"name": "chat_url", "type": "text", "nullable": true, "default": null}
+      ],
+      "indexes": []
+    },
+    "chats": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('chats_id_seq'::regclass)"},
+        {"name": "url", "type": "text", "nullable": false, "default": null},
+        {"name": "title", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "project", "type": "text", "nullable": false, "default": "'General'::text"},
+        {"name": "started_on", "type": "date", "nullable": true, "default": null},
+        {"name": "last_active", "type": "timestamp with time zone", "nullable": true, "default": null},
+        {"name": "status", "type": "text", "nullable": false, "default": "'open'::text"},
+        {"name": "note", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "next_step", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "created_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"},
+        {"name": "wrapped_at", "type": "timestamp with time zone", "nullable": true, "default": null},
+        {"name": "working", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "working_since", "type": "timestamp with time zone", "nullable": true, "default": null}
+      ],
+      "indexes": [
+        {"name": "chats_pkey", "unique": true, "columns": ["id"]},
+        {"name": "chats_url_key", "unique": true, "columns": ["url"]}
+      ]
+    },
+    "items": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('items_id_seq'::regclass)"},
+        {"name": "chat_id", "type": "integer", "nullable": true, "default": null},
+        {"name": "project", "type": "text", "nullable": false, "default": "'General'::text"},
+        {"name": "kind", "type": "text", "nullable": false, "default": "'action'::text"},
+        {"name": "text", "type": "text", "nullable": false, "default": null},
+        {"name": "due_on", "type": "date", "nullable": true, "default": null},
+        {"name": "done", "type": "boolean", "nullable": false, "default": "false"},
+        {"name": "done_at", "type": "timestamp with time zone", "nullable": true, "default": null},
+        {"name": "source", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "created_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"},
+        {"name": "triaged_at", "type": "timestamp with time zone", "nullable": true, "default": null},
+        {"name": "outcome", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "waiting_on", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "waiting_since", "type": "date", "nullable": true, "default": null},
+        {"name": "answer", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "answer_synced_at", "type": "timestamp with time zone", "nullable": true, "default": null}
+      ],
+      "indexes": [
+        {"name": "items_pkey", "unique": true, "columns": ["id"]}
+      ]
+    },
+    "limit_readings": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('limit_readings_id_seq'::regclass)"},
+        {"name": "kind", "type": "text", "nullable": false, "default": "'weekly'::text"},
+        {"name": "pct", "type": "integer", "nullable": false, "default": null},
+        {"name": "note", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "read_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"}
+      ],
+      "indexes": [
+        {"name": "limit_readings_pkey", "unique": true, "columns": ["id"]}
+      ]
+    },
+    "map_nodes": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('map_nodes_id_seq'::regclass)"},
+        {"name": "kind", "type": "text", "nullable": false, "default": null},
+        {"name": "name", "type": "text", "nullable": false, "default": null},
+        {"name": "project", "type": "text", "nullable": false, "default": "'General'::text"},
+        {"name": "about", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "url", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "detail", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "sort", "type": "integer", "nullable": false, "default": "100"},
+        {"name": "active", "type": "boolean", "nullable": false, "default": "true"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"}
+      ],
+      "indexes": [
+        {"name": "map_nodes_kind_name_key", "unique": true, "columns": ["name", "kind"]},
+        {"name": "map_nodes_pkey", "unique": true, "columns": ["id"]}
+      ]
+    },
+    "meta": {
+      "columns": [
+        {"name": "key", "type": "text", "nullable": false, "default": null},
+        {"name": "value", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"}
+      ],
+      "indexes": [
+        {"name": "meta_pkey", "unique": true, "columns": ["key"]}
+      ]
+    },
+    "skill_fixes": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('skill_fixes_id_seq'::regclass)"},
+        {"name": "skill", "type": "text", "nullable": false, "default": null},
+        {"name": "fix", "type": "text", "nullable": false, "default": null},
+        {"name": "source_chat", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "status", "type": "text", "nullable": false, "default": "'pending'::text"},
+        {"name": "created_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"},
+        {"name": "applied_at", "type": "timestamp with time zone", "nullable": true, "default": null}
+      ],
+      "indexes": [
+        {"name": "skill_fixes_pkey", "unique": true, "columns": ["id"]}
+      ]
+    },
+    "skill_runs": {
+      "columns": [
+        {"name": "day", "type": "date", "nullable": false, "default": null},
+        {"name": "chat_url", "type": "text", "nullable": false, "default": null},
+        {"name": "skill", "type": "text", "nullable": false, "default": null},
+        {"name": "runs", "type": "integer", "nullable": false, "default": "0"},
+        {"name": "weighted", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"}
+      ],
+      "indexes": [
+        {"name": "skill_runs_pkey", "unique": true, "columns": ["day", "chat_url", "skill"]}
+      ]
+    },
+    "usage_days": {
+      "columns": [
+        {"name": "id", "type": "integer", "nullable": false, "default": "nextval('usage_days_id_seq'::regclass)"},
+        {"name": "chat_url", "type": "text", "nullable": false, "default": null},
+        {"name": "chat_title", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "project", "type": "text", "nullable": false, "default": "'General'::text"},
+        {"name": "day", "type": "date", "nullable": false, "default": null},
+        {"name": "weighted", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "input_tokens", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "output_tokens", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "cache_read", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "cache_write", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "helpers", "type": "integer", "nullable": false, "default": "0"},
+        {"name": "helper_weighted", "type": "bigint", "nullable": false, "default": "0"},
+        {"name": "breakdown", "type": "jsonb", "nullable": false, "default": "'{}'::jsonb"},
+        {"name": "source", "type": "text", "nullable": false, "default": "''::text"},
+        {"name": "updated_at", "type": "timestamp with time zone", "nullable": false, "default": "now()"}
+      ],
+      "indexes": [
+        {"name": "usage_days_chat_url_day_key", "unique": true, "columns": ["day", "chat_url"]},
+        {"name": "usage_days_pkey", "unique": true, "columns": ["id"]}
+      ]
+    }
+  }
+}

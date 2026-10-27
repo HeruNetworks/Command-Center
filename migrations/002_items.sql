@@ -1,0 +1,12 @@
+CREATE TABLE IF NOT EXISTS items (
+  id SERIAL PRIMARY KEY,
+  chat_id INTEGER REFERENCES chats(id) ON DELETE SET NULL,
+  project TEXT NOT NULL DEFAULT 'General',
+  kind TEXT NOT NULL DEFAULT 'action',
+  text TEXT NOT NULL,
+  due_on DATE,
+  done BOOLEAN NOT NULL DEFAULT false,
+  done_at TIMESTAMPTZ,
+  source TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+)

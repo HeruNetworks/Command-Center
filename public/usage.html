@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1620">
+<title>Claude usage - Heru Command Centre</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(8px + env(safe-area-inset-top)) 16px 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; }
+  header a { color: var(--accent); text-decoration: none; font-weight: 600; font-size: 14px; }
+  main { padding: 8px 16px 40px; max-width: 720px; margin: 0 auto; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px; min-width: 0; }
+  .tile b { display: block; font-size: 22px; line-height: 1.1; }
+  .tile span { display: block; font-size: 12px; color: var(--muted); }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-top: 8px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .row:last-child { border-bottom: 0; }
+  .row .l { flex: 1; min-width: 0; word-break: break-word; font-size: 14px; }
+  .row .l small { display: block; color: var(--muted); font-size: 12px; }
+  .row .v { font-weight: 700; white-space: nowrap; }
+  .row .v.hot { color: #ff8a8a; }
+  .bar { height: 8px; background: var(--panel2); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  svg { display: block; width: 100%; height: auto; }
+  .warn { background: #3a1717; border: 1px solid #6b2525; color: #ffd0d0; border-radius: 12px; padding: 10px 12px; margin-top: 8px; font-size: 14px; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  form input[type=number] { width: 90px; min-height: 44px; }
+  form select { width: auto; min-height: 44px; }
+  .btn { min-height: 44px; }
+  .err { color: var(--bad); font-size: 14px; }
+  a.claude { color: var(--accent); }
+</style>
+</head>
+<body>
+<header><a href="/" aria-label="Back to the Command Centre">&larr; Board</a><h1>Claude usage</h1></header>
+<main id="main"><p class="muted">Loading...</p></main>
+<script>
+(function () {
+  var LIMIT_WARN = 50000000; // a chat above this in one day shows red
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function m(n) { n = Number(n) || 0; return n >= 1e6 ? (n / 1e6).toFixed(n >= 1e8 ? 0 : 1) + "M" : n >= 1e3 ? Math.round(n / 1e3) + "k" : String(n); }
+  function ukDay(d) { return new Date(d).toLocaleDateString("en-CA", { timeZone: "Europe/London" }); }
+  function fmtDay(s) { return new Date(String(s).slice(0, 10) + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); }
+  function safeUrl(u) { u = String(u || ""); return u.indexOf("https://claude.ai/") === 0 ? u : null; }
+  var NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs) { var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+  async function load() {
+    var r = await fetch("/api/usage");
+    if (!r.ok) throw new Error("Error " + r.status);
+    return r.json();
+  }
+
+  function dayChart(rows, perPct) {
+    // last 14 UK days, total weighted tokens per day
+    var today = ukDay(new Date()), days = [], tot = {};
+    rows.forEach(function (x) { var d = String(x.day).slice(0, 10); tot[d] = (tot[d] || 0) + Number(x.weighted); });
+    for (var i = 13; i >= 0; i--) { var dt = new Date(today + "T12:00:00Z"); dt.setUTCDate(dt.getUTCDate() - i); days.push(dt.toISOString().slice(0, 10)); }
+    var max = 1; days.forEach(function (d) { max = Math.max(max, tot[d] || 0); });
+    var W = 340, H = 150, pad = 18, top = perPct ? 12 : 0, bw = (W - 8) / days.length;
+    var s = svgEl("svg", { viewBox: "0 " + (-top) + " " + W + " " + (H + pad + top), role: "img", "aria-label": "Weighted tokens per day, last 14 days" });
+    function pctOf(v) { var p = v / perPct; return p >= 1 ? Math.round(p) + "%" : p >= 0.1 ? p.toFixed(1) + "%" : "<0.1%"; }
+    days.forEach(function (d, i) {
+      var v = tot[d] || 0, h = Math.round((v / max) * (H - 16));
+      var g = svgEl("g", {});
+      var rect = svgEl("rect", { x: 4 + i * bw + 2, y: H - h, width: bw - 4, height: Math.max(h, v ? 2 : 0), rx: 3, fill: v > LIMIT_WARN ? "#ff8a8a" : "var(--accent)" });
+      var t = svgEl("title", {}); t.textContent = fmtDay(d) + ": " + m(v) + (perPct ? " (" + pctOf(v) + " of weekly limit)" : ""); rect.appendChild(t); g.appendChild(rect);
+      if (v) { var lab = svgEl("text", { x: 4 + i * bw + bw / 2, y: H - h - 3, "text-anchor": "middle", "font-size": 9, fill: "var(--muted)" }); lab.textContent = m(v); g.appendChild(lab); }
+      if (v && perPct) { var pl = svgEl("text", { x: 4 + i * bw + bw / 2, y: H - h - 13, "text-anchor": "middle", "font-size": 9, "font-weight": 700, fill: "var(--accent)" }); pl.textContent = pctOf(v); g.appendChild(pl); }
+      if (i % 2 === 1 || i === days.length - 1) { var dl = svgEl("text", { x: 4 + i * bw + bw / 2, y: H + 13, "text-anchor": "middle", "font-size": 9, fill: "var(--muted)" }); dl.textContent = d.slice(8) + "/" + d.slice(5, 7); g.appendChild(dl); }
+      s.appendChild(g);
+    });
+    return s;
+  }
+
+  function meterChart(readings) {
+    var weekly = readings.filter(function (x) { return x.kind === "weekly"; }).slice(-20);
+    if (weekly.length < 2) return null;
+    var W = 340, H = 110, n = weekly.length;
+    var s = svgEl("svg", { viewBox: "0 0 " + W + " " + (H + 16), role: "img", "aria-label": "Weekly limit readings" });
+    s.appendChild(svgEl("line", { x1: 0, y1: H - 0.8 * H, x2: W, y2: H - 0.8 * H, stroke: "#6b2525", "stroke-dasharray": "4 4" }));
+    var pts = weekly.map(function (x, i) { return [8 + i * ((W - 16) / (n - 1)), H - (x.pct / 100) * H]; });
+    s.appendChild(svgEl("polyline", { points: pts.map(function (p) { return p.join(","); }).join(" "), fill: "none", stroke: "var(--accent)", "stroke-width": 2 }));
+    pts.forEach(function (p, i) { var c = svgEl("circle", { cx: p[0], cy: p[1], r: 3, fill: "var(--accent)" }); var t = svgEl("title", {}); t.textContent = weekly[i].pct + "% on " + new Date(weekly[i].read_at).toLocaleString("en-GB", { timeZone: "Europe/London" }); c.appendChild(t); s.appendChild(c); });
+    return s;
+  }
+
+  function render(data) {
+    var main = $("main"); main.innerHTML = "";
+    var rows = data.days || [], readings = data.readings || [];
+    var today = ukDay(new Date());
+    var weekAgo = new Date(today + "T12:00:00Z"); weekAgo.setUTCDate(weekAgo.getUTCDate() - 6); weekAgo = weekAgo.toISOString().slice(0, 10);
+    var tToday = 0, tWeek = 0, tAll = 0, helpers = 0;
+    rows.forEach(function (x) { var d = String(x.day).slice(0, 10), v = Number(x.weighted); tAll += v; helpers += Number(x.helper_weighted); if (d === today) tToday += v; if (d >= weekAgo) tWeek += v; });
+
+    var t = el("div", "tiles");
+    [["Today", tToday], ["Last 7 days", tWeek], ["All recorded", tAll]].forEach(function (p) { var d = el("div", "tile"); d.appendChild(el("b", null, m(p[1]))); d.appendChild(el("span", null, p[0])); t.appendChild(d); });
+    main.appendChild(t);
+    main.appendChild(el("p", "muted", "Weighted tokens: repeated reading of the same text counts at a tenth, saving it at double, Claude's own writing at five times. Only chats that record their usage are counted."));
+
+    var hot = rows.filter(function (x) { return Number(x.weighted) > LIMIT_WARN; });
+    if (hot.length) { var w = el("div", "warn"); w.textContent = hot.length + " chat-day" + (hot.length === 1 ? "" : "s") + " used over " + m(LIMIT_WARN) + ". Big multi-app jobs with many helpers are the usual cause."; main.appendChild(w); }
+
+    main.appendChild(el("h2", null, "Your claude.ai limit (from Settings > Usage)"));
+    var mb = el("div", "box");
+    var last = readings.filter(function (x) { return x.kind === "weekly"; }).slice(-1)[0];
+    mb.appendChild(el("p", null, last ? "Weekly limit: " + last.pct + "% used (" + new Date(last.read_at).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "No reading yet. Type the % shown in claude.ai under Settings > Usage."));
+    var mc = meterChart(readings); if (mc) mb.appendChild(mc);
+    var f = el("form"); f.setAttribute("novalidate", "");
+    var inp = el("input"); inp.type = "number"; inp.min = "0"; inp.max = "100"; inp.placeholder = "%"; inp.setAttribute("aria-label", "Percent used"); inp.inputMode = "numeric";
+    var sel = el("select"); [["weekly", "Weekly limit"], ["session", "Current session"]].forEach(function (o) { var op = el("option", null, o[1]); op.value = o[0]; sel.appendChild(op); }); sel.setAttribute("aria-label", "Which meter");
+    var btn = el("button", "btn primary", "Save reading"); btn.type = "submit";
+    var err = el("p", "err");
+    f.appendChild(inp); f.appendChild(sel); f.appendChild(btn);
+    f.onsubmit = async function (e) {
+      e.preventDefault(); err.textContent = "";
+      try {
+        var r = await fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pct: inp.value, kind: sel.value }) });
+        var j = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(j.error || ("Error " + r.status));
+        render(await load());
+      } catch (x) { err.textContent = x.message; }
+    };
+    mb.appendChild(f); mb.appendChild(err);
+    var lk = el("a", "claude", "Open claude.ai usage settings"); lk.href = "https://claude.ai/settings/usage"; lk.target = "_blank"; lk.rel = "noopener"; mb.appendChild(lk);
+    main.appendChild(mb);
+
+    main.appendChild(el("h2", null, "Per day (last 14 days)"));
+    var cb = el("div", "box"); cb.appendChild(dayChart(rows, data.per_pct)); 
+    if (data.estimate && data.estimate.value) cb.appendChild(el("p", "muted", String(data.estimate.value)));
+    main.appendChild(cb);
+
+    // per project
+    var byP = {}; rows.forEach(function (x) { byP[x.project] = (byP[x.project] || 0) + Number(x.weighted); });
+    var ps = Object.keys(byP).sort(function (a, b) { return byP[b] - byP[a]; });
+    main.appendChild(el("h2", null, "By project (all recorded)"));
+    var pb = el("div", "box");
+    if (!ps.length) pb.appendChild(el("p", "muted", "Nothing recorded yet."));
+    ps.forEach(function (p) { var r = el("div", "row"); var l = el("div", "l", p); var bar = el("div", "bar"); var i = el("i"); i.style.width = Math.max(2, Math.round(100 * byP[p] / (byP[ps[0]] || 1))) + "%"; bar.appendChild(i); l.appendChild(bar); r.appendChild(l); r.appendChild(el("span", "v", m(byP[p]))); pb.appendChild(r); });
+    main.appendChild(pb);
+
+    // per chat
+    var byC = {}; rows.forEach(function (x) { var k = x.chat_url; if (!byC[k]) byC[k] = { url: k, title: x.chat_title, project: x.project, w: 0, h: 0, n: 0, last: "" }; byC[k].w += Number(x.weighted); byC[k].h += Number(x.helper_weighted); byC[k].n = Math.max(byC[k].n, Number(x.helpers)); var d = String(x.day).slice(0, 10); if (d > byC[k].last) byC[k].last = d; });
+    var cs = Object.keys(byC).map(function (k) { return byC[k]; }).sort(function (a, b) { return b.w - a.w; });
+    main.appendChild(el("h2", null, "Biggest chats"));
+    var chb = el("div", "box");
+    if (!cs.length) chb.appendChild(el("p", "muted", "Nothing recorded yet."));
+    cs.slice(0, 15).forEach(function (c) {
+      var r = el("div", "row"); var l = el("div", "l");
+      var u = safeUrl(c.url);
+      if (u) { var a = el("a", "claude", c.title || "Chat"); a.href = u; a.target = "_blank"; a.rel = "noopener"; l.appendChild(a); } else l.appendChild(document.createTextNode(c.title || "Chat"));
+      l.appendChild(el("small", null, c.project + " · last " + fmtDay(c.last) + (c.h ? " · helpers " + Math.round(100 * c.h / (c.w || 1)) + "%" : "")));
+      r.appendChild(l); r.appendChild(el("span", "v" + (c.w > LIMIT_WARN ? " hot" : ""), m(c.w))); chb.appendChild(r);
+    });
+    main.appendChild(chb);
+    main.appendChild(el("p", "muted", "Claude chats on claude.ai cannot measure their own usage; only Claude Code sessions (like app builds) record figures here. The weekly % above is your real overall limit."));
+  }
+
+  load().then(render).catch(function (e) { $("main").innerHTML = ""; $("main").appendChild(el("p", "muted", "Could not load usage: " + e.message)); });
+})();
+</script>
+</body>
+</html>

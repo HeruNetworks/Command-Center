@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1620">
+<title>Heru Command Centre</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  :root { --nav-h: 60px; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(6px + env(safe-area-inset-top)) 16px 6px; border-bottom: 1px solid var(--line); }
+  .top { display: flex; align-items: center; gap: 8px; min-height: 38px; }
+  .top h1 { font-size: 17px; margin: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .iconbtn { flex: 0 0 auto; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+  .iconbtn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  select.proj-pick { width: auto; max-width: 42vw; min-height: 38px; padding: 4px 8px; font-size: 13px; border-radius: 10px; }
+  .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+  main { padding: 6px 16px calc(var(--nav-h) + 86px + env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; text-align: left; color: var(--text); cursor: pointer; min-width: 0; font: inherit; }
+  .tile b { display: block; font-size: 28px; line-height: 1.1; font-weight: 700; }
+  .tile span { display: block; font-size: 13px; color: var(--muted); }
+  .tile.hot { background: #3a1717; border-color: #6b2525; } .tile.hot b { color: #ff8a8a; }
+  .tile.warm b { color: var(--warn); }
+  .rows { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-top: 8px; }
+  .rowbtn { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 10px 14px; background: none; border: 0; border-bottom: 1px solid var(--line); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .rowbtn:last-child { border-bottom: 0; }
+  .rowbtn .lbl { flex: 1; min-width: 0; }
+  .rowbtn .lbl small { display: block; color: var(--muted); font-size: 12px; }
+  .rowbtn .cnt { font-weight: 700; font-size: 16px; min-width: 32px; text-align: right; }
+  .rowbtn .cnt.hot { color: #ff8a8a; }
+  .rowbtn .chev { color: var(--muted); font-size: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; }
+  .card.now { box-shadow: 0 0 0 2px var(--accent) inset; }
+  .meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 3px 10px; align-items: center; }
+  .title { font-weight: 700; font-size: 16px; margin: 3px 0; word-break: break-word; }
+  .note { font-size: 14px; margin: 3px 0; word-break: break-word; }
+  .next { font-size: 14px; margin: 3px 0; word-break: break-word; }
+  .next b { color: var(--accent); }
+  .acts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .acts .btn { min-height: 40px; padding: 6px 4px; font-size: 14px; }
+  .mini { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .mini .btn { min-height: 34px; padding: 4px 12px; font-size: 13px; border-radius: 10px; }
+  .seg { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 8px; }
+  .seg button { min-height: 38px; padding: 0 2px; line-height: 1.1; border: 0; background: var(--panel2); color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 600; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.on { background: var(--accent); color: var(--accent-text); }
+  .item { display: flex; gap: 10px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; }
+  .item.done .itext { text-decoration: line-through; color: var(--muted); }
+  .tick { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 9px; border: 2px solid var(--muted); background: transparent; color: var(--good); cursor: pointer; font-size: 18px; line-height: 1; }
+  .item.done .tick { border-color: var(--good); }
+  .ibody { flex: 1; min-width: 0; }
+  .itext { font-size: 15px; word-break: break-word; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--panel2); color: var(--muted); }
+  .badge.q { background: #2b3f63; color: #cfe0ff; }
+  .badge.d { background: #4a3a10; color: var(--warn); }
+  .badge.late { background: #5a1f1f; color: #ffd0d0; }
+  .badge.st-now { background: var(--accent); color: var(--accent-text); }
+  .badge.st-watch { background: #23485a; color: #bfe8ff; }
+  .working { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #9fe6b8; margin: 4px 0; word-break: break-word; }
+  .spin { flex: 0 0 auto; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #3ccf7a; border-top-color: transparent; animation: sp 1s linear infinite; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+  .pcard { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--line); border-radius: var(--radius); padding: 12px; margin: 8px 0; }
+  .pcard h3 { margin: 0 0 6px; font-size: 16px; }
+  .pstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 6px 0; }
+  .pstats div, .pstats button { background: var(--panel2); border-radius: 10px; padding: 6px; text-align: center; }
+  .pstats button { border: 1px solid transparent; color: var(--text); font: inherit; cursor: pointer; min-height: 56px; }
+  .pstats button:active, .pstats button:focus-visible { border-color: var(--accent); }
+  .pstats b { display: block; font-size: 18px; } .pstats span { font-size: 11px; color: var(--muted); }
+  .pstats .hot b { color: #ff8a8a; }
+  .pcard .acts { grid-template-columns: 2fr 1fr 1fr; }
+  .rename { margin-left: 8px; background: none; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 11px; font-weight: 600; padding: 2px 8px; cursor: pointer; vertical-align: middle; }
+  .badge.wrap { background: #3d2a52; color: #e2ccff; }
+  .more { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 4px 0; cursor: pointer; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 8px; }
+  .search { margin: 8px 0 4px; }
+  .fab { position: fixed; right: 16px; bottom: calc(var(--nav-h) + 14px + env(safe-area-inset-bottom)); z-index: 6; border-radius: 999px; min-height: 48px; padding: 0 18px; box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+  nav.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 7; background: var(--panel); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  nav.bar .in { max-width: 720px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); height: var(--nav-h); }
+  nav.bar button { position: relative; background: none; border: 0; color: var(--muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; }
+  nav.bar svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  nav.bar button.on { color: var(--accent); font-weight: 700; }
+  nav.bar .n { position: absolute; top: 5px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--panel2); color: var(--text); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  nav.bar .n.hot { background: var(--bad); color: #fff; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .proj { display: flex; flex-direction: column; gap: 2px; background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: 12px; padding: 10px 12px; text-decoration: none; color: var(--text); min-width: 0; cursor: pointer; text-align: left; font: inherit; }
+  .proj b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .proj span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app { display: flex; gap: 10px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 8px 0; }
+  .app .dot { margin-top: 6px; }
+  .app b { font-size: 15px; }
+  .app .desc { color: var(--muted); font-size: 13px; }
+  .app .todo { font-size: 13px; margin-top: 2px; }
+  .app a.btn { flex: 0 0 auto; min-height: 36px; padding: 4px 12px; font-size: 13px; align-self: center; }
+  .st-live { background: var(--good); } .st-test { background: var(--warn); } .st-private { background: var(--muted); } .st-unconf { background: transparent; border: 2px solid var(--muted); }
+  dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); width: min(92vw, 480px); padding: 16px; max-height: 88vh; overflow: auto; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  dialog p { margin: 6px 0; }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; }
+  .err { color: var(--bad); font-size: 14px; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + 72px + env(safe-area-inset-bottom)); background: var(--panel2); border: 1px solid var(--line); padding: 8px 14px; border-radius: 999px; font-size: 14px; display: none; z-index: 9; max-width: 90vw; text-align: center; }
+  .toast .undo { margin-left: 10px; background: none; border: 0; color: var(--accent); font-weight: 700; font-size: 14px; cursor: pointer; padding: 4px 6px; }
+  .tri { background: var(--panel); border: 1px solid var(--line); border-left: 6px solid var(--line); border-radius: 16px; padding: 14px; margin-top: 8px; }
+  .tri .ttext { font-size: 18px; line-height: 1.4; margin: 8px 0; word-break: break-word; }
+  .trib { display: grid; gap: 8px; margin-top: 12px; }
+  .trib .btn { min-height: 56px; font-size: 17px; font-weight: 700; }
+  .btn.ok { background: var(--good); border-color: var(--good); color: #04200f; }
+  .btn.keep { background: transparent; border: 2px solid var(--warn); color: var(--warn); }
+  .btn.drop { background: transparent; border: 2px solid var(--muted); color: var(--text); }
+  .prog { height: 8px; background: var(--panel2); border-radius: 99px; overflow: hidden; margin: 6px 0 2px; }
+  .prog i { display: block; height: 100%; background: var(--good); }
+  .trirow { display: flex; gap: 8px; margin-top: 10px; } .trirow .btn { flex: 1; min-height: 40px; font-size: 14px; }
+  .banner { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: 14px; border: 1px solid #4a3a10; background: #2a2210; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .banner b { color: var(--warn); }
+  .badge.w { background: #1f4a3a; color: #b8f0d6; }
+  .wk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .wk div { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 8px; text-align: center; }
+  .wk b { display: block; font-size: 24px; } .wk span { font-size: 12px; color: var(--muted); }
+  .wk .hot b { color: #ff8a8a; }
+  .prow { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .prow:last-child { border-bottom: 0; } .prow .pn { flex: 1; min-width: 0; } .prow .pc { color: var(--muted); font-size: 12px; text-align: right; }
+  .prow .quiet { color: var(--warn); font-weight: 700; }
+  .srch-h { display: flex; justify-content: space-between; align-items: baseline; }
+  .iid { display: inline-block; margin-right: 6px; font-size: 13px; font-weight: 700; color: var(--accent); text-decoration: none; font-variant-numeric: tabular-nums; }
+  .ans { font-size: 14px; margin: 6px 0 2px; padding: 6px 10px; background: var(--panel2); border-radius: 10px; word-break: break-word; white-space: pre-wrap; }
+  .ans b { color: var(--good); }
+  .badge.unsync { background: #3d2a52; color: #e2ccff; margin-top: 2px; }
+  .ansb { display: grid; gap: 8px; margin-top: 8px; } .ansb .btn { min-height: 52px; font-size: 16px; }
+  pre.opener { white-space: pre-wrap; word-break: break-word; background: var(--panel2); border-radius: 10px; padding: 10px; font-size: 13px; margin: 8px 0; font-family: inherit; }
+</style>
+<style>
+/* 24 Oct: bigger small print (Mario found it too fine to read) */
+.sub{font-size:14px}h2{font-size:14px}.tile span{font-size:15px}.rowbtn .lbl small{font-size:14px}.meta{font-size:14px}
+.title{font-size:17px}.note,.next{font-size:16px}.itext{font-size:16px}.badge{font-size:13px}.pstats span{font-size:13px}
+.app b{font-size:16px}.app .desc,.app .todo{font-size:15px}.proj b{font-size:15px}.proj span{font-size:14px}.prow{font-size:16px}.prow .pc{font-size:14px}
+.wk span{font-size:14px}.working{font-size:15px}.ans,.err{font-size:16px}.acts .btn,.trirow .btn{font-size:15px}
+.mini .btn,.seg button,.more,.app a.btn{font-size:14px}select.proj-pick{font-size:15px}.rename{font-size:13px}.iid{font-size:15px}
+.app{padding:12px 14px}.app b{font-size:18px;font-weight:700}.app .desc{font-size:16px;color:var(--text)}.app .todo{font-size:16px}.app .meta{font-size:15px}.app a.btn{font-size:16px;min-height:44px;padding:6px 16px}.proj b{font-size:16px}.proj span{font-size:15px}
+.qhead{display:flex;align-items:center;justify-content:space-between;margin-top:8px}.qhead .btn{min-height:36px;padding:4px 16px;font-size:15px}.qctl{display:flex;gap:6px;margin-top:6px}.qctl .btn{flex:1;min-height:40px;padding:2px;font-size:16px}.proj:is(a) b{font-size:17px}
+.grid.q3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid.q3 .proj{min-height:72px;justify-content:center;padding:12px 8px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;transition:transform .12s,box-shadow .12s}.grid.q3 .proj b{font-size:15px;word-break:break-word;white-space:normal;overflow:visible;text-overflow:clip;line-height:1.2}.grid.q3 .proj span{font-size:12.5px}.proj.lift{transform:scale(1.07);box-shadow:0 6px 18px rgba(0,0,0,.5);z-index:5;position:relative;opacity:.92}
+/* 24 Oct: a splash of colour (Mario said it looked pale) */
+.tiles .tile{--c:#8aa0b8;background:linear-gradient(135deg,color-mix(in srgb,var(--c) 24%,var(--panel)),var(--panel) 88%);border-color:color-mix(in srgb,var(--c) 50%,var(--line));border-left:5px solid var(--c)}
+.tiles .tile b{color:var(--c)}
+.tiles .tile:nth-child(1){--c:#ff6b6b}.tiles .tile:nth-child(2){--c:#ffa94d}.tiles .tile:nth-child(3){--c:#4dabf7}.tiles .tile:nth-child(4){--c:#69db7c}
+.tiles .tile:nth-child(5){--c:#38d9a9}.tiles .tile:nth-child(6){--c:#b197fc}.tiles .tile:nth-child(7){--c:#f783ac}.tiles .tile:nth-child(8){--c:#ffd43b}
+.rows .rowbtn{--c:#4dabf7;border-left:5px solid var(--c);background:linear-gradient(90deg,color-mix(in srgb,var(--c) 14%,transparent),transparent 60%)}
+.rows .rowbtn:nth-child(6n+1){--c:#ff6b6b}.rows .rowbtn:nth-child(6n+2){--c:#ffa94d}.rows .rowbtn:nth-child(6n+3){--c:#4dabf7}.rows .rowbtn:nth-child(6n+4){--c:#69db7c}.rows .rowbtn:nth-child(6n+5){--c:#b197fc}.rows .rowbtn:nth-child(6n+6){--c:#f783ac}
+.rows .rowbtn .cnt{color:var(--c)}.rows .rowbtn .cnt.hot{color:#ff8a8a}
+.pcard{--pc:#adb5bd;background:linear-gradient(135deg,color-mix(in srgb,var(--pc) 20%,var(--panel)),var(--panel) 75%)}.pcard h3{color:var(--pc)}
+.pstats>*:nth-child(1){background:color-mix(in srgb,#4dabf7 24%,var(--panel2))}.pstats>*:nth-child(1) b{color:#8fcbff}
+.pstats>*:nth-child(2){background:color-mix(in srgb,#69db7c 24%,var(--panel2))}.pstats>*:nth-child(2) b{color:#9be8a8}
+.pstats>*:nth-child(3){background:color-mix(in srgb,#ff6b6b 24%,var(--panel2))}.pstats>*:nth-child(3) b{color:#ff9d9d}
+.pstats>*:nth-child(4){background:color-mix(in srgb,#b197fc 24%,var(--panel2))}.pstats>*:nth-child(4) b{color:#cdbcff}
+.grid.q3 .proj{--c:#4dabf7;border-left-color:var(--c);background:linear-gradient(135deg,color-mix(in srgb,var(--c) 22%,var(--panel)),var(--panel) 85%)}
+.grid.q3 .proj:nth-child(8n+1){--c:#ffd43b}.grid.q3 .proj:nth-child(8n+2){--c:#4dabf7}.grid.q3 .proj:nth-child(8n+3){--c:#69db7c}.grid.q3 .proj:nth-child(8n+4){--c:#f783ac}
+.grid.q3 .proj:nth-child(8n+5){--c:#b197fc}.grid.q3 .proj:nth-child(8n+6){--c:#ffa94d}.grid.q3 .proj:nth-child(8n+7){--c:#38d9a9}.grid.q3 .proj:nth-child(8n+8){--c:#ff6b6b}
+.badge.heavy{background:#5a1f1f;color:#ffd0d0;border:0;cursor:pointer;font-family:inherit}
+details.fold{margin:12px 0}details.fold>summary{cursor:pointer;font-size:16px;font-weight:700;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:44px;display:flex;align-items:center}details.fold[open]>summary{margin-bottom:8px}
+pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}nav.bar button{font-size:12.5px}.small{font-size:15px}
+</style><link rel="stylesheet" href="/board-skin.css?v=1">
+</head>
+<body>
+<header>
+  <div class="top">
+    <button class="iconbtn" id="back" aria-label="Back" style="display:none"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h1 id="ttl">Command Centre</h1>
+    <select class="proj-pick" id="projPick" aria-label="Project"></select>
+    <button class="iconbtn" id="helpBtn" aria-label="How it works"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg></button>
+    <button class="iconbtn" id="refresh" aria-label="Refresh"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+  </div>
+  <div class="sub" id="subline"></div>
+</header>
+<main id="main"><p class="empty">Loading...</p></main>
+<nav class="bar" aria-label="Pages"><div class="cc-nav-actions"><a href="/map.html" class="cc-universe-mini">◈ Explore universe</a><button class="btn primary fab" id="addBtn">+ Add</button></div><div class="in" id="nav"></div></nav>
+
+<dialog id="dlg">
+  <form method="dialog" onsubmit="return false">
+    <h3 style="margin:0 0 4px">Add</h3>
+    <label id="ncLabel">Start a new chat in a project</label>
+    <div class="grid" id="newChatGrid"></div>
+    <label for="fText" style="margin-top:14px">Or add a note to the board</label>
+    <textarea id="fText" rows="3" maxlength="500" placeholder="What needs doing or answering?"></textarea>
+    <div class="row">
+      <div><label for="fKind">Type</label>
+        <select id="fKind"><option value="action">To do</option><option value="question">Question</option><option value="deadline">Deadline</option><option value="waiting">Waiting on someone</option></select></div>
+      <div><label for="fDue">Due (optional)</label><input id="fDue" type="date"></div>
+    </div>
+    <div id="fWhoBox" style="display:none"><label for="fWho">Waiting on who?</label><input id="fWho" maxlength="80" placeholder="e.g. Binghi, Ben Warren, the client"></div>
+    <label for="fProject">Project</label>
+    <select id="fProject"></select>
+    <p class="err" id="fErr"></p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" type="button" id="fCancel">Cancel</button>
+      <button class="btn primary" type="button" id="fSave">Save note</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="goDlg">
+  <h3 style="margin:0 0 4px" id="goTitle"></h3>
+  <p class="small muted" id="goHelp"></p>
+  <pre class="opener" id="goText"></pre>
+  <div class="row">
+    <button class="btn" type="button" id="goCancel">Close</button>
+    <a class="btn primary" id="goOpen" target="_blank" rel="noopener">Copy and open</a>
+  </div>
+</dialog>
+<dialog id="edDlg">
+  <form method="dialog" onsubmit="return false">
+    <h3 style="margin:0 0 4px">Edit item</h3>
+    <label for="eText">Wording</label>
+    <textarea id="eText" rows="3" maxlength="500"></textarea>
+    <div class="row">
+      <div><label for="eKind">Type</label>
+        <select id="eKind"><option value="action">To do</option><option value="question">Question</option><option value="deadline">Deadline</option><option value="waiting">Waiting on someone</option></select></div>
+      <div><label for="eDue">Due</label><input id="eDue" type="date"></div>
+    </div>
+    <div id="eWhoBox" style="display:none">
+      <div class="row">
+        <div><label for="eWho">Waiting on who?</label><input id="eWho" maxlength="80"></div>
+        <div><label for="eSince">Since</label><input id="eSince" type="date"></div>
+      </div>
+    </div>
+    <label for="eProject">Project</label>
+    <select id="eProject"></select>
+    <p class="err" id="eErr"></p>
+    <div class="row" style="margin-top:8px">
+      <button class="btn" type="button" id="eCancel">Cancel</button>
+      <button class="btn primary" type="button" id="eSave">Save</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="rnDlg">
+  <h3 style="margin:0 0 4px">Rename chat</h3>
+  <p class="small muted">Date first, then area, then the job. Example: 22 Oct - ZS - Michah invoices</p>
+  <input id="rnText" maxlength="80">
+  <p class="err" id="rnErr"></p>
+  <div class="row"><button class="btn" type="button" id="rnCancel">Cancel</button><button class="btn primary" type="button" id="rnSave">Save</button></div>
+</dialog>
+<dialog id="helpDlg">
+  <h3 style="margin:0 0 6px" tabindex="-1" autofocus>How the Command Centre works</h3>
+  <p><b>What it is.</b> One place on your phone for every Claude chat, question and to-do across all 7 projects. Every chat adds itself when it starts and when you wrap it up.</p>
+  <p><b>Bottom bar.</b> Home = today at a glance. Chats = your chats sorted into lists. Tasks = questions and to-dos. Projects = one card per project. Apps = quick links, new chats and all your apps.</p>
+  <p><b>The four buttons on a chat</b> only sort the chat into a list. Nothing is deleted and nothing happens in Claude:</p>
+  <p>&bull; <b>Doing now</b>: set automatically. Any chat that posted to the board in the last 3 hours shows as Doing now, and drops back to Open after 3 quiet hours. You can also tap it yourself.<br>&bull; <b>Watch list</b>: parked, but you want to keep an eye on it (Chats &gt; Watching).<br>&bull; <b>Open</b>: normal, still going.<br>&bull; <b>Done</b>: finished. Moves to Chats &gt; Done for 14 days.</p>
+  <p>Pressed the wrong one? Tap <b>Undo</b> on the message at the bottom, or just tap the right button.</p>
+  <p><b>Open chat</b> takes you straight back to that chat. <b>Wrap up</b> copies a wrap-up message and opens the chat: paste and send. <b>Do it</b> on a question or to-do copies a ready-made opener and opens the right chat or project.</p>
+  <p><b>Ticking</b> the box on a question or to-do moves it to Tasks &gt; Ticked off (tap again to bring it back).</p>
+  <p><b>Green spinning line</b> = Claude is busy on a long job in that chat right now.</p>
+  <p><b>NEEDS WRAP-UP</b> = you worked in that chat after its last wrap-up.</p>
+  <p><b>Looks finished?</b> (Chats page, and a Tidy up banner on Home) = chats quiet for 7 days with nothing open. Check the list and tap Mark all as Done. Undo is there if you change your mind.</p>
+  <p><b>Close a chat from Claude:</b> type "close this chat" in the chat. It wraps up and marks itself Done here.</p>
+  <p><b>Sync</b> (Projects page): opens a new chat in that project that posts any of its chats missing from the board. Use it when a project looks out of date. A chat can only see chats in its own project, so there is one Sync per project.</p>
+  <p><b>Rename</b> next to a chat title. Use: date - area - job, for example 22 Oct - ZS - Michah invoices.</p>
+  <p><b>+ Add</b> starts a new chat in a project or adds a note. The drop-down at the top shows one project only.</p>
+  <p><b>Waiting on someone</b> = a note type for things you are waiting on Binghi, Ben Warren, a client and so on. Tasks &gt; Waiting on lists them by person with how long you have waited. Do it drafts a chase. Tick it when they come back to you.</p>
+  <p><b>Edit</b> on any question or to-do changes its wording, type, due date, who you are waiting on, or its project.</p>
+  <p><b>Search box on Home</b> searches chats, questions, to-dos, waiting-on items and apps all at once.</p>
+  <p><b>Week in review</b> (Tasks page, and a banner on Home from Friday) shows what got done, what was added, what is overdue and which projects went quiet in the last 7 days.</p>
+  <p><b>07:00 email</b>: on weekdays you get one email at 07:00 only if something is overdue or due today. No email means nothing is late.</p>
+  <div class="row" style="margin-top:10px"><button class="btn primary" type="button" id="helpClose">Got it</button></div>
+</dialog>
+<dialog id="ansDlg">
+  <h3 style="margin:0 0 4px">Ticking off a question</h3>
+  <p class="small muted" id="aQ"></p>
+  <label for="aText">Answer (saved to Heru Facts at next sync)</label>
+  <textarea id="aText" rows="4" maxlength="2000" placeholder="What was the answer? Leave empty if none."></textarea>
+  <p class="err" id="aErr"></p>
+  <div class="ansb">
+    <button class="btn primary" type="button" id="aSave">Save</button>
+    <button class="btn" type="button" id="aSkip">Skip, no answer</button>
+    <button class="btn" type="button" id="aCancel">Cancel (leave it open)</button>
+  </div>
+</dialog>
+<div class="toast" id="toast"><span id="toastMsg"></span><button type="button" id="toastUndo" class="undo">Undo</button></div>
+
+<script>
+(function () {
+  var PROJECTS = ["Legal", "ZS Cabling", "Site Work", "Business Admin", "Learning", "Personal", "App Builder", "General"];
+  var COLOURS = { "Legal": "#ff6b6b", "ZS Cabling": "#4dabf7", "Site Work": "#ffa94d", "Business Admin": "#69db7c", "Learning": "#b197fc", "Personal": "#f783ac", "App Builder": "#ffd43b", "General": "#adb5bd" };
+  var LINKS = {
+    "Legal": ["https://claude.ai/project/01a10deb-a150-7355-96d5-94e1e8ed14f4", "Timur and Vadim claims"],
+    "ZS Cabling": ["https://claude.ai/project/01a10dec-c6e4-7552-807d-c2f7147b46b9", "Payments, reconciliation"],
+    "Site Work": ["https://claude.ai/project/01a10ded-5c13-773a-8c6d-dbaf82402cc9", "Evidence, looms, reports"],
+    "Business Admin": ["https://claude.ai/project/01a10ded-f488-745a-80e9-a52d4c23d908", "CIS, VAT, QuickBooks"],
+    "Learning": ["https://claude.ai/project/01a10dee-1d7a-7259-ad2c-b21aed51c46a", "Tutor, training manual"],
+    "Personal": ["https://claude.ai/project/01a10dee-6217-7322-abb3-3b271b17a04a", "Home, commute, training"],
+    "App Builder": ["https://claude.ai/project/01a10d85-aacc-7544-9da0-877192cef26c", "Apps and websites"],
+    "General": ["https://claude.ai/new", "Chat outside a project"]
+  };
+  var QUICK = [
+    ["Heru Accounts", "https://claude.ai/artifact/WuTFfgeHkEtw5JC3xPL4Tg", "Money dashboard"],
+    ["ShiftLog", "https://www.shiftlog.uk", "Shifts and invoices"],
+    ["Cable Log", "https://cable.shiftlog.uk", "Outlet testing"],
+    // Status Board, Gmail, Drive and QuickBooks links removed 24 Oct 2026 (Mario)
+    ["Hatchable", "https://hatchable.com/console", "Your app hosting"]
+  ];
+  var ICONS = {
+    home: '<path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/>',
+    chats: '<path d="M4 5h16v11H9l-5 4z"/>',
+    projects: '<path d="M3 7h7l2 2h9v10H3z"/>',
+    tasks: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12l3 3 5-6"/>',
+    apps: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>'
+  };
+  var PAGES = [["home", "Home"], ["chats", "Chats"], ["tasks", "Tasks"], ["projects", "Projects"], ["apps", "Apps"]];
+  var SUBS = {
+    "c-now": ["chats", "Doing now", "Chats marked Doing now"],
+    "c-today": ["chats", "Open today", "Chats with activity today"],
+    "c-unres": ["chats", "Unresolved", "Chats with open questions or to-dos"],
+    "c-wrap": ["chats", "Need wrapping up", "Worked on since their last wrap-up"],
+    "c-watch": ["chats", "Watching", "Chats you are keeping an eye on"],
+    "c-fin": ["chats", "Looks finished?", "Quiet for 7+ days with nothing open"],
+    "c-all": ["chats", "All open chats", "By the date they started"],
+    "c-done": ["chats", "Done", "Finished in the last 14 days"],
+    "t-over": ["tasks", "Overdue", "Past their date"],
+    "t-soon": ["tasks", "Due in 7 days", "Overdue first, then soonest"],
+    "t-q": ["tasks", "Questions to answer", "Oldest first"],
+    "t-todo": ["tasks", "To do", "Soonest due first"],
+    "t-done": ["tasks", "Ticked off", "Last 14 days"],
+    "t-wait": ["tasks", "Waiting on", "By person, longest wait first"],
+    "t-week": ["tasks", "Week in review", "The last 7 days"],
+    "t-triage": ["tasks", "Triage", "Sort old items one at a time"]
+  };
+  var STATUS = { live: "Live", test: "Needs testing", "private": "Private", unconf: "Not confirmed" };
+  var state = { page: "home", sub: null, project: "All", q: "", data: null, open: {}, skipped: {}, skipN: 0, lastTri: null };
+  try { var saved = JSON.parse(localStorage.getItem("hcc_view2") || "{}"); if (saved.page) state.page = saved.page; if (saved.project) state.project = saved.project; } catch (e) {}
+
+  var NL = String.fromCharCode(10);
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function saveView() { try { localStorage.setItem("hcc_view2", JSON.stringify({ page: state.page, project: state.project })); } catch (e) {} }
+  function toast(t, undo) {
+    var x = $("toast"); $("toastMsg").textContent = t; x.style.display = "block";
+    var u = $("toastUndo"); u.style.display = undo ? "" : "none"; u.onclick = function () { x.style.display = "none"; if (undo) undo(); };
+    clearTimeout(toast.t); toast.t = setTimeout(function () { x.style.display = "none"; }, undo ? 7000 : 2600);
+  }
+  function safeUrl(u) { u = String(u || ""); return u.indexOf("https://") === 0 ? u : null; }
+  function claudeUrl(u) { u = String(u || ""); return u.indexOf("https://claude.ai/") === 0 ? u : null; }
+  function colour(p) { return COLOURS[p] || COLOURS.General; }
+  function projLink(p) { return (LINKS[p] || LINKS.General)[0]; }
+
+  function ukDay(d) { return new Date(d).toLocaleDateString("en-CA", { timeZone: "Europe/London" }); }
+  var TODAY = ukDay(new Date());
+  function fmtDate(s) { if (!s) return ""; var d = new Date(String(s).slice(0, 10) + "T12:00:00Z"); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); }
+  function hhmm(ts) { return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }); }
+  function fmtWhen(ts) { if (!ts) return ""; var day = ukDay(ts); return (day === TODAY ? "today " : fmtDate(day) + " ") + hhmm(ts); }
+  function daysBetween(a, b) { return Math.round((new Date(b + "T12:00:00Z") - new Date(a + "T12:00:00Z")) / 86400000); }
+
+  async function api(path, body) {
+    var opt = body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {};
+    var r = await fetch("/api/" + path, opt);
+    if (!r.ok) { var t = "Error " + r.status; try { var j = await r.json(); if (j.error) t = j.error; } catch (e) {} throw new Error(t); }
+    return r.json();
+  }
+  async function load() {
+    try { state.data = await api("board"); TODAY = ukDay(new Date()); render(); }
+    catch (e) { $("main").innerHTML = ""; $("main").appendChild(el("p", "empty", "Could not load the board: " + e.message)); }
+  }
+
+  function copy(text) {
+    try { if (navigator.clipboard) return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; }); } catch (e) {}
+    return Promise.resolve(false);
+  }
+  function showGo(title, help, text, url) {
+    $("goTitle").textContent = title; $("goHelp").textContent = help; $("goText").textContent = text;
+    var a = $("goOpen"); a.href = url;
+    a.onclick = function () { copy(text).then(function (ok) { toast(ok ? "Copied. Paste it into the chat and send." : "Copy blocked: press and hold the text to copy it."); }); setTimeout(function () { $("goDlg").close(); }, 300); };
+    $("goDlg").showModal();
+  }
+  function doIt(i) {
+    var c = i.chat_id ? chatById(i.chat_id) : null;
+    var text = "From my Command Centre (item " + i.id + ", " + i.project + "): " + i.text + NL + NL + "Work out exactly what you need from me, ask for any files, then do it step by step. List anything you cannot confirm as MISSING. When it is done, use the command-centre-update skill: tick item " + i.id + " and add any new questions or to-dos.";
+    if (i.kind === "waiting") text = "From my Command Centre (item " + i.id + ", " + i.project + "): I have been waiting on " + (i.waiting_on || "someone") + (i.waiting_since ? " since " + fmtDate(i.waiting_since) : "") + " for: " + i.text + NL + NL + "Check my email for anything they have already sent. If nothing has come back, draft a short, polite chase in my writing style for me to check before sending. List anything you cannot confirm as MISSING. If it has come back, use the command-centre-update skill to tick item " + i.id + ".";
+    var has = c && claudeUrl(c.url);
+    showGo(i.kind === "waiting" ? "Chase" : "Do it", "Copies this opener and opens " + (has ? "its original chat" : "a new chat in " + i.project) + ". Paste it and send.", text, has ? c.url : projLink(i.project));
+  }
+  function wrapUp(c) {
+    var text = "Wrap up this chat. 1) Use the command-centre-update skill: update this chat's note and next step, add new questions and to-dos, tick off anything finished, and mark the chat as wrapped. 2) Update this project's usual wrap-up places (status doc, Status Board tab, Heru Facts if relevant). 3) Give me a 3-line summary.";
+    showGo("Wrap up", "Copies the wrap-up message and opens this chat. Paste and send. Tap Done here when the chat is finished with.", text, c.url);
+  }
+  function freshChat(c) {
+    var text = "Continue from my Command Centre chat '" + (c.title || "") + "'. Read Heru Facts first, then that chat's note, next step and open items on the board. Use the command-centre-update skill to register this new chat.";
+    showGo("Start a fresh chat", "This chat has logged " + (Number(c.used) / 1e6).toFixed(1) + "M weighted tokens, so a fresh chat is cheaper. Copies a handover and opens a new chat in " + c.project + ". Paste it and send.", text, projLink(c.project));
+  }
+  function newChat(p) {
+    var text = "New chat started from my Command Centre (" + p + "). Use the command-centre-update skill to register this chat, then ask me what we are working on.";
+    showGo("New chat: " + p, "Opens " + (p === "General" ? "a new chat" : "the " + p + " project") + ". Tap New chat there if needed, then paste and send.", text, projLink(p));
+  }
+
+  function syncProject(p) {
+    var text = "Sync: using the command-centre-update skill, check this " + (p === "General" ? "list of chats outside projects" : p + " project's chats") + " from the last 14 days and post any that are missing or out of date on my Command Centre (title, note, next step, open items, tick what is done). Do not add this sync chat itself. When finished, give me a one-line count, then tell me to delete this chat.";
+    showGo("Sync " + p, "Opens " + (p === "General" ? "a new chat" : "the " + p + " project") + ". Tap New chat there if needed, then paste and send. It takes about a minute.", text, projLink(p));
+  }
+  function inProject(x) { return state.project === "All" || x.project === state.project; }
+  function chatById(id) { var c = (state.data.chats || []).filter(function (c) { return c.id === id; }); return c[0] || null; }
+  function hoursSince(t) { return t ? (Date.now() - new Date(t).getTime()) / 3600000 : 99999; }
+  function isNow(c) {
+    if (c.status === "done" || c.status === "watch") return false;
+    return hoursSince(c.last_active) < 3 || (c.status === "now" && hoursSince(c.updated_at) < 3);
+  }
+  function shown(c) { return c.status === "done" ? "done" : c.status === "watch" ? "watch" : isNow(c) ? "now" : "open"; }
+  function needsWrap(c) {
+    if (c.status === "done" || !c.last_active) return false;
+    if (!c.wrapped_at) return true;
+    return new Date(c.last_active) - new Date(c.wrapped_at) > 10 * 60000;
+  }
+
+  function waitStart(i) { return i.waiting_since ? String(i.waiting_since).slice(0, 10) : (i.created_at ? ukDay(i.created_at) : TODAY); }
+  function waitDays(i) { return daysBetween(waitStart(i), TODAY); }
+  function lists() {
+    var d = state.data, chats = d.chats.filter(inProject), items = d.items.filter(function (i) { return !i.done && inProject(i); });
+    var openIds = {}; items.forEach(function (i) { if (i.chat_id) openIds[i.chat_id] = (openIds[i.chat_id] || 0) + 1; });
+    var live = chats.filter(function (c) { return c.status !== "done"; });
+    var due = function (i) { return i.due_on ? daysBetween(TODAY, String(i.due_on).slice(0, 10)) : null; };
+    var byDue = function (a, b) { return String(a.due_on).localeCompare(String(b.due_on)); };
+    return {
+      cNow: live.filter(isNow),
+      cFin: live.filter(function (c) { return !isNow(c) && c.status !== "watch" && !openIds[c.id] && hoursSince(c.last_active || c.updated_at) >= 24 * 7; }),
+      cWork: chats.filter(function (c) { return c.working; }),
+      cToday: live.filter(function (c) { return c.last_active && ukDay(c.last_active) === TODAY; }),
+      cUnres: live.filter(function (c) { return openIds[c.id]; }),
+      cWrap: live.filter(needsWrap),
+      cWatch: live.filter(function (c) { return c.status === "watch"; }),
+      cAll: live,
+      cDone: chats.filter(function (c) { return c.status === "done"; }),
+      tOver: items.filter(function (i) { var g = due(i); return g !== null && g < 0; }).sort(byDue),
+      tSoon: items.filter(function (i) { var g = due(i); return g !== null && g <= 7; }).sort(byDue),
+      tQ: items.filter(function (i) { return i.kind === "question"; }),
+      tWait: items.filter(function (i) { return i.kind === "waiting"; }).sort(function (a, b) { return String(waitStart(a)).localeCompare(String(waitStart(b))) || a.id - b.id; }),
+      tTodo: items.filter(function (i) { return i.kind !== "question" && i.kind !== "waiting"; }).sort(function (a, b) { var ad = a.due_on ? String(a.due_on) : "9999", bd = b.due_on ? String(b.due_on) : "9999"; return ad.localeCompare(bd) || a.id - b.id; }),
+      tDone: d.items.filter(function (i) { return i.done && inProject(i); }).sort(function (a, b) { return String(b.done_at).localeCompare(String(a.done_at)); }),
+      tTriage: items.filter(function (i) { return !i.triaged_at; }).sort(function (a, b) { var sa = state.skipped[a.id] || 0, sb = state.skipped[b.id] || 0; return sa - sb || String(a.created_at).localeCompare(String(b.created_at)) || a.id - b.id; }),
+      openIds: openIds
+    };
+  }
+
+  function go(page, sub) { state.page = page; state.sub = sub || null; state.q = ""; saveView(); render(); window.scrollTo(0, 0); }
+
+  function renderChrome(L) {
+    var nav = $("nav"); nav.innerHTML = "";
+    var badges = { home: [L.cWork.length, false], chats: [L.cWrap.length, false], tasks: [L.tOver.length || L.tQ.length, L.tOver.length > 0], projects: [0, false], apps: [0, false] };
+    PAGES.forEach(function (p) {
+      var b = el("button", state.page === p[0] ? "on" : "");
+      b.setAttribute("aria-label", p[1]);
+      b.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[p[0]] + "</svg>";
+      b.appendChild(el("span", null, p[1]));
+      var n = badges[p[0]][0];
+      if (n) b.appendChild(el("span", "n" + (badges[p[0]][1] ? " hot" : ""), n > 99 ? "99+" : String(n)));
+      b.onclick = function () { go(p[0]); };
+      nav.appendChild(b);
+    });
+    var sub = state.sub ? SUBS[state.sub] : null;
+    $("ttl").textContent = sub ? sub[1] : (state.page === "home" ? "Home" : PAGES.filter(function (p) { return p[0] === state.page; })[0][1]);
+    $("back").style.display = sub ? "" : "none";
+    $("projPick").style.display = (state.page === "apps" || state.page === "projects") ? "none" : "";
+    var s = (state.data.meta || {}).last_sweep;
+    $("subline").textContent = sub ? sub[2] : (s ? "Updated by Claude " + fmtWhen(s.at) : new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" }));
+    $("addBtn").style.display = state.page === "apps" ? "none" : "";
+  }
+
+  function chatCard(c) {
+    var ds = shown(c);
+    var card = el("div", "card" + (ds === "now" ? " now" : ""));
+    card.style.borderLeftColor = colour(c.project);
+    var meta = el("div", "meta");
+    var dt = el("span", "dot"); dt.style.background = colour(c.project); meta.appendChild(dt);
+    meta.appendChild(el("span", null, c.project));
+    if (c.last_active) meta.appendChild(el("span", null, "Active " + fmtWhen(c.last_active)));
+    if (ds === "now") meta.appendChild(el("span", "badge st-now", "DOING NOW"));
+    if (ds === "watch") meta.appendChild(el("span", "badge st-watch", "WATCHING"));
+    if (needsWrap(c)) meta.appendChild(el("span", "badge wrap", "NEEDS WRAP-UP"));
+    // Heavy chat: logged usage past meta.heavy_threshold (default 5M weighted). Tap for a fresh-chat handover.
+    var heavyAt = Number((state.data.meta && state.data.meta.heavy_threshold && state.data.meta.heavy_threshold.value) || 5000000);
+    if (c.status !== "done" && Number(c.used) >= heavyAt) { var hb = el("button", "badge heavy", "HEAVY " + (Number(c.used) / 1e6).toFixed(1) + "M"); hb.type = "button"; hb.onclick = function () { freshChat(c); }; meta.appendChild(hb); }
+    card.appendChild(meta);
+    var tl = el("div", "title"); tl.appendChild(document.createTextNode(c.title || "(untitled chat)"));
+    var rn = el("button", "rename", "Rename"); rn.type = "button"; rn.onclick = function () { openRename(c); }; tl.appendChild(rn);
+    card.appendChild(tl);
+    if (c.working) { var wk = el("div", "working"); wk.appendChild(el("span", "spin")); wk.appendChild(document.createTextNode("Claude working: " + c.working + (c.working_since ? " (since " + hhmm(c.working_since) + ")" : ""))); card.appendChild(wk); }
+    if (c.note) card.appendChild(el("div", "note", c.note));
+    if (c.next_step) { var n = el("div", "next"); n.appendChild(el("b", null, "Next: ")); n.appendChild(document.createTextNode(c.next_step)); card.appendChild(n); }
+    var its = state.data.items.filter(function (i) { return i.chat_id === c.id && !i.done; });
+    if (its.length) {
+      var open = !!state.open[c.id];
+      var mb = el("button", "more", (open ? "Hide " : "Show ") + its.length + " open item" + (its.length === 1 ? "" : "s"));
+      mb.onclick = function () { state.open[c.id] = !open; render(); };
+      card.appendChild(mb);
+      if (open) its.forEach(function (i) { card.appendChild(itemRow(i, true)); });
+    }
+    var acts = el("div", "acts");
+    var u = claudeUrl(c.url);
+    if (u) { var a = el("a", "btn primary", "Open chat"); a.href = u; a.target = "_blank"; a.rel = "noopener"; acts.appendChild(a); }
+    if (u && c.status !== "done") { var w = el("button", "btn", "Wrap up"); w.onclick = function () { wrapUp(c); }; acts.appendChild(w); }
+    var add = el("button", "btn", "+ Note"); add.onclick = function () { openAdd(c); }; acts.appendChild(add);
+    card.appendChild(acts);
+    var seg = el("div", "seg");
+    [["now", "Doing now"], ["watch", "Watch list"], ["open", "Open"], ["done", "Done"]].forEach(function (s) {
+      var b = el("button", ds === s[0] ? "on" : "", s[1]);
+      b.onclick = function () { if (ds !== s[0] || c.status !== s[0]) setStatus(c, s[0], true); };
+      seg.appendChild(b);
+    });
+    card.appendChild(seg);
+    return card;
+  }
+
+  var STNAME = { now: "Doing now", watch: "Watch list", open: "Open", done: "Done" };
+  async function setStatus(c, to, offerUndo) {
+    var old = c.status, oldU = c.updated_at; c.status = to; c.updated_at = new Date().toISOString(); render();
+    try {
+      await api("update", { action: "chat_status", id: c.id, status: to });
+      toast("Moved to " + STNAME[to], offerUndo ? function () { setStatus(c, old, false); } : null);
+    } catch (e) { c.status = old; c.updated_at = oldU; render(); toast("Not saved: " + e.message); }
+  }
+  function itemRow(i, inCard) {
+    var row = el("div", "item" + (i.done ? " done" : ""));
+    if (inCard) { row.style.margin = "6px 0"; row.style.background = "var(--panel2)"; }
+    row.style.borderLeftColor = colour(i.project);
+    var tk = el("button", "tick", i.done ? "✓" : "");
+    tk.setAttribute("aria-label", i.done ? "Mark not done" : "Mark done");
+    tk.onclick = function () {
+      if (!i.done) askAnswer(i, function (ans) { setDone(i, true, ans); }, true);
+      else setDone(i, !i.done, "");
+    };
+    row.appendChild(tk);
+    var body = el("div", "ibody");
+    var it = el("div", "itext"); it.appendChild(el("span", "iid", "#" + i.id)); it.appendChild(document.createTextNode(i.text)); body.appendChild(it);
+    var meta = el("div", "meta");
+    if (!inCard) { var dt = el("span", "dot"); dt.style.background = colour(i.project); meta.appendChild(dt); meta.appendChild(el("span", null, i.project)); }
+    if (i.kind === "question") meta.appendChild(el("span", "badge q", "QUESTION"));
+    if (i.kind === "deadline") meta.appendChild(el("span", "badge d", "DEADLINE"));
+    if (i.kind === "waiting") { var wd = waitDays(i); meta.appendChild(el("span", "badge w", "WAITING ON " + String(i.waiting_on || "?").toUpperCase())); if (!i.done) meta.appendChild(el("span", wd >= 7 ? "badge late" : null, wd < 1 ? "since today" : wd + " day" + (wd === 1 ? "" : "s") + " waiting")); }
+    if (i.outcome === "drop") meta.appendChild(el("span", "badge", "NOT NEEDED"));
+    if (i.due_on) {
+      var dd = String(i.due_on).slice(0, 10), gap = daysBetween(TODAY, dd);
+      meta.appendChild(el("span", "badge" + (gap <= 0 && !i.done ? " late" : " d"), gap < 0 ? "Overdue " + fmtDate(dd) : gap === 0 ? "Due today" : "Due " + fmtDate(dd)));
+    }
+    if (!i.done && i.created_at && i.kind !== "waiting") { var age = daysBetween(ukDay(i.created_at), TODAY); if (age >= 1) meta.appendChild(el("span", null, age + " day" + (age === 1 ? "" : "s") + " old")); }
+    body.appendChild(meta);
+    if (i.done && i.answer) {
+      var ab = el("div", "ans"); ab.appendChild(el("b", null, "Answer: ")); ab.appendChild(document.createTextNode(i.answer));
+      body.appendChild(ab);
+      if (!i.answer_synced_at) body.appendChild(el("span", "badge unsync", "Answer not yet in Heru Facts"));
+    }
+    if (!i.done) {
+      var mini = el("div", "mini");
+      var g = el("button", "btn primary", i.kind === "waiting" ? "Chase" : "Do it"); g.onclick = function () { doIt(i); }; mini.appendChild(g);
+      var c = i.chat_id ? chatById(i.chat_id) : null;
+      if (c && claudeUrl(c.url) && !inCard) { var a = el("a", "btn", "Open chat"); a.href = c.url; a.target = "_blank"; a.rel = "noopener"; mini.appendChild(a); }
+      var ed = el("button", "btn", "Edit"); ed.type = "button"; ed.onclick = function () { openEdit(i); }; mini.appendChild(ed);
+      body.appendChild(mini);
+    }
+    row.appendChild(body);
+    return row;
+  }
+
+  async function setDone(i, done, ans) {
+    var was = { done: i.done, done_at: i.done_at, answer: i.answer, answer_synced_at: i.answer_synced_at };
+    i.done = done; i.done_at = done ? new Date().toISOString() : null;
+    if (done && ans) { i.answer = ans; i.answer_synced_at = null; }
+    render();
+    var body = { action: "item_done", id: i.id, done: done };
+    if (done && ans) body.answer = ans;
+    try { await api("update", body); toast(done ? (ans ? "Ticked off, answer saved" : "Ticked off") : "Back on the list", function () { setDone(i, !done, ""); }); }
+    catch (e) { Object.assign(i, was); render(); toast("Not saved: " + e.message); }
+  }
+  // Ask for an answer when a question is ticked off. cb(answer) - answer may be "".
+  var answerCb = null;
+  function askAnswer(i, cb, any) {
+    answerCb = cb;
+    $("ansDlg").querySelector("h3").textContent = any ? "Done: what did you do?" : "Ticking off a question";
+    $("aText").placeholder = any ? "What did you do, or what is the answer? I read this at the next sync. Leave empty if nothing to add." : "What was the answer? Leave empty if none.";
+    $("aSave").textContent = any ? "Submit information" : "Save";
+    $("aQ").textContent = i.text; $("aText").value = i.answer || ""; $("aErr").textContent = "";
+    $("ansDlg").showModal();
+    setTimeout(function () { try { $("aText").focus(); } catch (e) {} }, 50);
+  }
+  $("aSave").onclick = function () {
+    var v = $("aText").value.trim();
+    if (v.length > 2000) { $("aErr").textContent = "Too long: keep it under 2000 characters."; return; }
+    var cb = answerCb; answerCb = null; $("ansDlg").close(); if (cb) cb(v);
+  };
+  $("aSkip").onclick = function () { var cb = answerCb; answerCb = null; $("ansDlg").close(); if (cb) cb(""); };
+  $("aCancel").onclick = function () { answerCb = null; $("ansDlg").close(); };
+  $("ansDlg").addEventListener("cancel", function () { answerCb = null; });
+  function heading(t) { $("main").appendChild(el("h2", null, t)); }
+  function add(n) { $("main").appendChild(n); }
+  function list(nodes, emptyText) { if (!nodes.length) { add(el("p", "empty", emptyText || "Nothing here.")); return; } nodes.forEach(add); }
+  function searchBox(ph) {
+    return; // search boxes switched off 24 Oct 2026 (Mario does not use them)
+    var s = el("input", "search"); s.type = "search"; s.placeholder = ph; s.value = state.q;
+    s.oninput = function () { state.q = s.value; var pos = s.selectionStart; render(); var ns = document.querySelector(".search"); if (ns) { ns.focus(); try { ns.setSelectionRange(pos, pos); } catch (e) {} } };
+    add(s);
+  }
+  function match(t) { var q = state.q.toLowerCase(); return !q || String(t || "").toLowerCase().indexOf(q) >= 0; }
+  function tile(label, n, cls, onClick) { var b = el("button", "tile" + (cls ? " " + cls : "")); b.type = "button"; b.appendChild(el("b", null, String(n))); b.appendChild(el("span", null, label)); b.onclick = onClick; return b; }
+  function rowBtn(label, hint, n, hot, onClick) {
+    var b = el("button", "rowbtn"); b.type = "button";
+    var l = el("span", "lbl", label); if (hint) l.appendChild(el("small", null, hint)); b.appendChild(l);
+    b.appendChild(el("span", "cnt" + (hot && n ? " hot" : ""), String(n)));
+    b.appendChild(el("span", "chev", "›"));
+    b.onclick = onClick; return b;
+  }
+  function projectGrid(host, onPick) {
+    PROJECTS.forEach(function (p) {
+      var b = el("button", "proj"); b.type = "button"; b.style.borderLeftColor = colour(p);
+      b.appendChild(el("b", null, p)); b.appendChild(el("span", null, (LINKS[p] || LINKS.General)[1]));
+      b.onclick = function () { onPick(p); }; host.appendChild(b);
+    });
+  }
+
+  function searchAll(L) {
+    var q = state.q, n = 0, d = state.data;
+    var cs = d.chats.filter(inProject).filter(function (c) { return match(c.title + " " + c.note + " " + c.next_step + " " + c.project); });
+    var its = d.items.filter(function (i) { return !i.done && inProject(i) && match(i.text + " " + (i.waiting_on || "") + " " + i.project); });
+    var dn = d.items.filter(function (i) { return i.done && inProject(i) && match(i.text + " " + (i.waiting_on || "")); });
+    var ap = (d.apps || []).filter(function (a) { return match(a.name + " " + a.about + " " + a.note); });
+    var ql = QUICK.filter(function (x) { return match(x[0] + " " + x[2]); });
+    if (its.length) { n += its.length; heading("Questions, to-dos and waiting on (" + its.length + ")"); its.slice(0, 30).forEach(function (i) { add(itemRow(i)); }); }
+    if (cs.length) { n += cs.length; heading("Chats (" + cs.length + ")"); cs.slice(0, 20).forEach(function (c) { add(chatCard(c)); }); }
+    if (ap.length || ql.length) {
+      n += ap.length + ql.length; heading("Apps and links (" + (ap.length + ql.length) + ")");
+      ql.concat(ap.map(function (a) { return [a.name, a.url, a.about]; })).forEach(function (x) {
+        var row = el("div", "app"); var t = el("div", "ibody"); t.appendChild(el("b", null, x[0])); if (x[2]) t.appendChild(el("div", "desc", x[2])); row.appendChild(t);
+        var u = safeUrl(x[1]); if (u) { var l = el("a", "btn", "Open"); l.href = u; l.target = "_blank"; l.rel = "noopener"; row.appendChild(l); }
+        add(row);
+      });
+    }
+    if (dn.length) { n += dn.length; heading("Ticked off, last 14 days (" + dn.length + ")"); dn.slice(0, 10).forEach(function (i) { add(itemRow(i)); }); }
+    if (!n) add(el("p", "empty", "Nothing matches \"" + q + "\"" + (state.project !== "All" ? " in " + state.project + ". Try All projects at the top." : ".")));
+  }
+  function weekStats() {
+    var d = state.data, since = new Date(Date.now() - 7 * 86400000).toISOString();
+    var inP = function (x) { return inProject(x); };
+    var doneI = d.items.filter(function (i) { return inP(i) && i.done && i.done_at && i.done_at >= since && i.outcome !== "drop"; });
+    var dropped = d.items.filter(function (i) { return inP(i) && i.done && i.done_at && i.done_at >= since && i.outcome === "drop"; });
+    var added = d.items.filter(function (i) { return inP(i) && i.created_at && i.created_at >= since; });
+    var chatsDone = d.chats.filter(function (c) { return inP(c) && c.status === "done" && c.updated_at >= since; });
+    var chatsNew = d.chats.filter(function (c) { return inP(c) && c.started_on && daysBetween(String(c.started_on).slice(0, 10), TODAY) <= 6; });
+    return { doneI: doneI, dropped: dropped, added: added, chatsDone: chatsDone, chatsNew: chatsNew };
+  }
+  function pageWeek(L) {
+    var w = weekStats();
+    var g = el("div", "wk");
+    [["Ticked off", w.doneI.length, false], ["Added", w.added.length, false], ["Overdue now", L.tOver.length, true], ["Chats done", w.chatsDone.length, false], ["Chats started", w.chatsNew.length, false], ["Waiting 7+ days", L.tWait.filter(function (i) { return waitDays(i) >= 7; }).length, true]].forEach(function (x) {
+      var b = el("div", x[2] && x[1] ? "hot" : ""); b.appendChild(el("b", null, String(x[1]))); b.appendChild(el("span", null, x[0])); g.appendChild(b);
+    });
+    add(g);
+    heading("Projects this week");
+    var box = el("div", "rows");
+    PROJECTS.forEach(function (p) {
+      if (state.project !== "All" && p !== state.project) return;
+      var act = state.data.chats.filter(function (c) { return c.project === p && c.last_active && hoursSince(c.last_active) < 24 * 7; }).length;
+      var dn = w.doneI.filter(function (i) { return i.project === p; }).length;
+      var open = state.data.items.filter(function (i) { return i.project === p && !i.done; }).length;
+      if (p === "General" && !act && !dn && !open) return;
+      var r = el("div", "prow"); var dt = el("span", "dot"); dt.style.background = colour(p); r.appendChild(dt);
+      r.appendChild(el("span", "pn", p));
+      var pc = el("span", "pc"); pc.appendChild(document.createTextNode(act + " chat" + (act === 1 ? "" : "s") + " active, " + dn + " done, " + open + " open"));
+      if (!act && open) { pc.appendChild(el("br")); pc.appendChild(el("span", "quiet", "Quiet all week")); }
+      r.appendChild(pc); box.appendChild(r);
+    });
+    add(box);
+    heading("Got done (" + w.doneI.length + ")");
+    list(w.doneI.slice().sort(function (a, b) { return String(b.done_at).localeCompare(String(a.done_at)); }).map(function (i) { return itemRow(i); }), "Nothing ticked off this week.");
+    if (L.tOver.length) { heading("Still overdue (" + L.tOver.length + ")"); L.tOver.forEach(function (i) { add(itemRow(i)); }); }
+    heading("Added this week (" + w.added.length + ")");
+    list(w.added.filter(function (i) { return !i.done; }).map(function (i) { return itemRow(i); }), "Nothing new still open.");
+    if (w.dropped.length) add(el("p", "small muted", w.dropped.length + " item" + (w.dropped.length === 1 ? "" : "s") + " marked Not needed this week."));
+  }
+  function pageHome(L) {
+    searchBox("Search everything");
+    if (state.q.trim()) { searchAll(L); return; }
+    var hero=el("section","cc-hero"),heroText=el("div");
+    heroText.appendChild(el("div","cc-kicker","HERU / COMMAND CENTRE"));heroText.appendChild(el("h2",null,"Your next move."));heroText.appendChild(el("p",null,"A clear view of what needs you, and everything you are building."));hero.appendChild(heroText);
+    var universe=el("a","cc-universe","Explore your universe ↗");universe.href="/map.html";hero.appendChild(universe);add(hero);
+    var focus=el("section","cc-focus");focus.setAttribute("aria-label","Your next three actions");focus.appendChild(el("h2",null,"Mario, these need you"));focus.appendChild(el("p","cc-focus-rule","Overdue first, then due soon, then open questions."));
+    var seen={},priority=L.tOver.concat(L.tSoon,L.tQ).filter(function(i){if(seen[i.id])return false;seen[i.id]=true;return true}).slice(0,3),focusList=el("div","cc-priorities");
+    priority.forEach(function(i){focusList.appendChild(itemRow(i));});if(!priority.length)focusList.appendChild(el("p","empty","Nothing urgent here. Choose a project or open your task list."));focus.appendChild(focusList);add(focus);
+    var ns = (state.data.meta || {}).nudge_status;
+    if (ns && String(ns.value).indexOf("FAILED") === 0) { var nb = el("div", "banner"); nb.appendChild(el("span", null, "07:00 email problem: " + ns.value + ". Ask Claude to check the Command Centre nudge.")); add(nb); }
+    if (L.cWork.length) { heading("Claude working now (" + L.cWork.length + ")"); L.cWork.forEach(function (c) { add(chatCard(c)); }); }
+    var t = el("div", "tiles");
+    t.appendChild(tile("Overdue", L.tOver.length, L.tOver.length ? "hot" : "", function () { go("tasks", "t-over"); }));
+    t.appendChild(tile("Due in 7 days", L.tSoon.length, L.tSoon.length ? "warm" : "", function () { go("tasks", "t-soon"); }));
+    t.appendChild(tile("Questions to answer", L.tQ.length, "", function () { go("tasks", "t-q"); }));
+    t.appendChild(tile("To do", L.tTodo.length, "", function () { go("tasks", "t-todo"); }));
+    t.appendChild(tile("Chats open today", L.cToday.length, "", function () { go("chats", "c-today"); }));
+    t.appendChild(tile("Need wrapping up", L.cWrap.length, L.cWrap.length ? "warm" : "", function () { go("chats", "c-wrap"); }));
+    var chaseN = L.tWait.filter(function (i) { return waitDays(i) >= 7; }).length;
+    t.appendChild(tile("Waiting on others", L.tWait.length, chaseN ? "warm" : "", function () { go("tasks", "t-wait"); }));
+    t.appendChild(tile("Done this week", weekStats().doneI.length, "", function () { go("tasks", "t-week"); }));
+    var metrics=el("details","cc-overview"),ms=el("summary",null,"Workspace at a glance");ms.appendChild(el("span",null,"8 counters · tap to expand"));metrics.appendChild(ms);metrics.appendChild(t);add(metrics);
+    var maintenance=el("details","cc-maintenance"),maintenanceBody=el("div");maintenance.appendChild(el("summary",null,"Reviews, sync and housekeeping"));maintenance.appendChild(maintenanceBody);
+    function notice(n){maintenanceBody.appendChild(n)}
+    var dow = new Date().toLocaleDateString("en-GB", { timeZone: "Europe/London", weekday: "short" });
+    if (dow === "Fri" || dow === "Sat" || dow === "Sun") { var wb = el("button", "banner"); wb.type = "button"; var wt = el("span", null, "Friday review: "); wt.appendChild(el("b", null, "your week")); wt.appendChild(document.createTextNode(" - what got done, what's overdue, which projects went quiet.")); wb.appendChild(wt); wb.onclick = function () { go("tasks", "t-week"); }; notice(wb); }
+    var ub = el("a", "banner"); ub.href = "/usage.html"; ub.style.textDecoration = "none"; var ut = el("span", null, "Claude usage: "); ut.appendChild(el("b", null, "see where tokens go")); ut.appendChild(document.createTextNode(" and log your weekly %.")); ub.appendChild(ut); notice(ub);
+    if (L.cFin.length) { var fb = el("button", "banner"); fb.type = "button"; var ft = el("span", null, "Tidy up: "); ft.appendChild(el("b", null, L.cFin.length + " chat" + (L.cFin.length === 1 ? "" : "s"))); ft.appendChild(document.createTextNode(" look finished. Tap to check.")); fb.appendChild(ft); fb.onclick = function () { go("chats", "c-fin"); }; notice(fb); }
+    if (L.tTriage.length) { var bn = el("button", "banner"); bn.type = "button"; var bt = el("span", null, "Triage: "); bt.appendChild(el("b", null, L.tTriage.length + " old items")); bt.appendChild(document.createTextNode(" to sort. Tap to clear a few.")); bn.appendChild(bt); bn.onclick = function () { go("tasks", "t-triage"); }; notice(bn); }
+    var unsyn = state.data.items.filter(function (i) { return i.answer && !i.answer_synced_at; }).length;
+    if (unsyn) {
+      var sb = el("button", "banner"); sb.type = "button"; var st = el("span", null, "Sync: "); st.appendChild(el("b", null, unsyn + " note" + (unsyn === 1 ? "" : "s"))); st.appendChild(document.createTextNode(" waiting to go into Heru Facts. Tap to sync.")); sb.appendChild(st);
+      sb.onclick = function () { showGo("Sync notes to Heru Facts", "Copies the sync message and opens a new chat. Paste it and send. It takes about a minute.", "Board sync. Use the board-answers-sync and command-centre-update skills: copy my new Command Centre notes and answers into Heru Facts, check them against what is already there, tick off any item they show is finished, and if my notes raise further questions or new jobs, add each one to the board as a question or to-do (no duplicates). Then tell me in a few short lines: what you copied, what you ticked off, and any new questions for me.", projLink("General")); };
+      notice(sb);
+    }
+    if(maintenanceBody.children.length)add(maintenance);
+    heading("Doing now (" + L.cNow.length + ")");
+    var doing=el("div","cc-doing");if(L.cNow.length)L.cNow.forEach(function(c){doing.appendChild(chatCard(c))});else doing.appendChild(el("p","empty","Nothing marked Doing now. Tap Doing now on the chat you are working in."));add(doing);
+
+  }
+  function pageChats(L) {
+    var r = el("div", "rows");
+    r.appendChild(rowBtn("Doing now", "The chats you are working in", L.cNow.length, false, function () { go("chats", "c-now"); }));
+    r.appendChild(rowBtn("Open today", "Activity today", L.cToday.length, false, function () { go("chats", "c-today"); }));
+    r.appendChild(rowBtn("Unresolved", "Open questions or to-dos", L.cUnres.length, false, function () { go("chats", "c-unres"); }));
+    r.appendChild(rowBtn("Need wrapping up", "Worked on since last wrap-up", L.cWrap.length, true, function () { go("chats", "c-wrap"); }));
+    r.appendChild(rowBtn("Looks finished?", "Quiet 7+ days, nothing open", L.cFin.length, false, function () { go("chats", "c-fin"); }));
+    r.appendChild(rowBtn("Watching", "Keeping an eye on", L.cWatch.length, false, function () { go("chats", "c-watch"); }));
+    r.appendChild(rowBtn("All open chats", "By start date", L.cAll.length, false, function () { go("chats", "c-all"); }));
+    r.appendChild(rowBtn("Done", "Last 14 days", L.cDone.length, false, function () { go("chats", "c-done"); }));
+    add(r);
+  }
+  function pageTasks(L) {
+    var r = el("div", "rows");
+    r.appendChild(rowBtn("Triage", "Sort old items one at a time", L.tTriage.length, false, function () { go("tasks", "t-triage"); }));
+    r.appendChild(rowBtn("Overdue", "Past their date", L.tOver.length, true, function () { go("tasks", "t-over"); }));
+    r.appendChild(rowBtn("Due in 7 days", "Including overdue", L.tSoon.length, false, function () { go("tasks", "t-soon"); }));
+    r.appendChild(rowBtn("Questions to answer", "Waiting for you", L.tQ.length, false, function () { go("tasks", "t-q"); }));
+    r.appendChild(rowBtn("To do", "Actions and deadlines", L.tTodo.length, false, function () { go("tasks", "t-todo"); }));
+    r.appendChild(rowBtn("Waiting on", "Things you are waiting on others for", L.tWait.length, false, function () { go("tasks", "t-wait"); }));
+    r.appendChild(rowBtn("Week in review", "Last 7 days", weekStats().doneI.length, false, function () { go("tasks", "t-week"); }));
+    r.appendChild(rowBtn("Ticked off", "Last 14 days", L.tDone.length, false, function () { go("tasks", "t-done"); }));
+    add(r);
+  }
+  function pageProjects() {
+    var d = state.data;
+    PROJECTS.forEach(function (p) {
+      var chats = d.chats.filter(function (c) { return c.project === p && c.status !== "done"; });
+      var items = d.items.filter(function (i) { return i.project === p && !i.done; });
+      var over = items.filter(function (i) { return i.due_on && daysBetween(TODAY, String(i.due_on).slice(0, 10)) < 0; }).length;
+      var qs = items.filter(function (i) { return i.kind === "question"; }).length;
+      var wrap = chats.filter(needsWrap).length;
+      var work = chats.filter(function (c) { return c.working; });
+      if (p === "General" && !chats.length && !items.length) return;
+      var card = el("div", "pcard"); card.style.borderLeftColor = colour(p); card.style.setProperty("--pc", colour(p));
+      card.appendChild(el("h3", null, p));
+      var st = el("div", "pstats");
+      var todo = items.filter(function (i) { return i.kind !== "question" && i.kind !== "waiting"; }).length;
+      // Each box opens the matching list, filtered to this project (22 Oct 2026).
+      [["Questions", qs, false, "tasks", "t-q"], ["To do", todo, false, "tasks", "t-todo"], ["Overdue", over, true, "tasks", "t-over"], ["Wrap-up", wrap, true, "chats", "c-wrap"]].forEach(function (x) {
+        var b = el("button", x[2] && x[1] ? "hot" : ""); b.type = "button";
+        b.setAttribute("aria-label", x[1] + " " + x[0] + " in " + p + ". Open the list");
+        b.appendChild(el("b", null, String(x[1]))); b.appendChild(el("span", null, x[0]));
+        b.onclick = function () { state.project = p; $("projPick").value = p; go(x[3], x[4]); toast("Showing " + p + " only. Change it at the top."); };
+        st.appendChild(b);
+      });
+      card.appendChild(st);
+      work.forEach(function (c) { var wk = el("div", "working"); wk.appendChild(el("span", "spin")); wk.appendChild(document.createTextNode("Claude working: " + c.working)); card.appendChild(wk); });
+      var last = chats.slice().sort(function (a, b) { return String(b.last_active || "").localeCompare(String(a.last_active || "")); })[0];
+      if (last) {
+        var m = el("div", "meta"); m.appendChild(el("span", null, "Latest: " + (last.title || "chat") + (last.last_active ? " - " + fmtWhen(last.last_active) : ""))); card.appendChild(m);
+        if (last.next_step) { var n = el("div", "next"); n.appendChild(el("b", null, "Next: ")); n.appendChild(document.createTextNode(last.next_step)); card.appendChild(n); }
+      } else card.appendChild(el("div", "meta", "No chats on the board yet."));
+      var acts = el("div", "acts");
+      var see = el("button", "btn primary", "Show only " + p); see.onclick = function () { state.project = p; $("projPick").value = p; go("home"); toast("Showing " + p + " only. Change it at the top."); }; acts.appendChild(see);
+      var nc = el("button", "btn", "New chat"); nc.onclick = function () { newChat(p); }; acts.appendChild(nc);
+      var sy = el("button", "btn", "Sync"); sy.onclick = function () { syncProject(p); }; acts.appendChild(sy);
+      card.appendChild(acts);
+      add(card);
+    });
+  }
+  function pageApps() {
+    var apps = state.data.apps || [];
+    var inGrp = function (g) { return apps.filter(function (a) { return (a.grp || "main") === g && match(a.name + " " + a.about + " " + a.note); }); };
+    var quickApps = apps.filter(function (a) { return a.quick; }).sort(function (a, b) { return a.qsort - b.qsort; });
+    var quickIds = quickApps.map(function (a) { return a.id; });
+    function saveQuick(ids) {
+      var prev = apps.map(function (x) { return [x, x.quick, x.qsort]; });
+      apps.forEach(function (x) { var p = ids.indexOf(x.id); x.quick = p >= 0; x.qsort = p >= 0 ? p : 0; });
+      render();
+      api("update", { action: "app_quick_order", ids: ids }).catch(function (e) { prev.forEach(function (p) { p[0].quick = p[1]; p[0].qsort = p[2]; }); render(); toast("Not saved: " + e.message); });
+    }
+    var qh = el("div", "qhead"); qh.appendChild(el("h2", null, "Quick links"));
+    var qe = el("button", "btn", state.editQ ? "Done" : "Edit"); qe.type = "button"; qe.onclick = function () { state.editQ = !state.editQ; render(); }; qh.appendChild(qe); add(qh);
+    var qg = el("div", "grid q3");
+    // Hold a tile for half a second, then drag it to a new place. Lifting your finger saves the order.
+    function enableDrag(tile) {
+      var timer = null, dragging = false, swallow = false, sx = 0, sy = 0, gx = 0, gy = 0;
+      var SPRING = "transform .34s cubic-bezier(.34,1.56,.64,1)";
+      // The lifted tile sticks to your finger, wherever it sits in the grid.
+      function follow(px, py) {
+        tile.style.transform = "none";
+        var r = tile.getBoundingClientRect();
+        tile.style.transform = "translate(" + (px - gx - (r.left + r.width / 2)) + "px," + (py - gy - (r.top + r.height / 2)) + "px) scale(1.07)";
+      }
+      // The other tiles glide from where they were to where they now are, with a small bounce.
+      function glide(kids, first) {
+        kids.forEach(function (t) { if (t !== tile) { t.style.transition = "none"; t.style.transform = ""; } });
+        kids.forEach(function (t, i) {
+          if (t === tile) return;
+          var l = t.getBoundingClientRect(), dx = first[i].left - l.left, dy = first[i].top - l.top;
+          if (!dx && !dy) return;
+          t.style.transform = "translate(" + dx + "px," + dy + "px)";
+          void t.offsetWidth;
+          t.style.transition = SPRING; t.style.transform = "";
+          setTimeout(function () { t.style.transition = ""; }, 380);
+        });
+      }
+      tile.addEventListener("touchmove", function (e) { if (dragging) e.preventDefault(); }, { passive: false });
+      tile.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      tile.draggable = false; tile.addEventListener("dragstart", function (e) { e.preventDefault(); });
+      tile.addEventListener("click", function (e) { if (swallow) { e.preventDefault(); e.stopPropagation(); swallow = false; } }, true);
+      tile.addEventListener("pointerdown", function (e) {
+        sx = e.clientX; sy = e.clientY; clearTimeout(timer);
+        timer = setTimeout(function () { dragging = true; swallow = true; tile.classList.add("lift"); tile.style.transition = "none"; var r0 = tile.getBoundingClientRect(); gx = sx - (r0.left + r0.width / 2); gy = sy - (r0.top + r0.height / 2); follow(sx, sy); document.addEventListener("pointermove", onMove); document.addEventListener("pointerup", end); document.addEventListener("pointercancel", end); try { tile.setPointerCapture(e.pointerId); } catch (x) {} if (navigator.vibrate) navigator.vibrate(20); }, 450);
+      });
+      function onMove(e) {
+        if (e._h) return; e._h = true;
+        if (!dragging) { if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) clearTimeout(timer); return; }
+        var kids = [].slice.call(qg.children);
+        for (var k = 0; k < kids.length; k++) {
+          var t = kids[k]; if (t === tile) continue;
+          var r = t.getBoundingClientRect();
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            var first = kids.map(function (x) { return x.getBoundingClientRect(); });
+            qg.insertBefore(tile, kids.indexOf(tile) < k ? t.nextSibling : t);
+            glide(kids, first); break;
+          }
+        }
+        follow(e.clientX, e.clientY);
+      }
+      tile.addEventListener("pointermove", onMove);
+      function end() {
+        clearTimeout(timer);
+        if (!dragging) return;
+        dragging = false; tile.classList.remove("lift");
+        document.removeEventListener("pointermove", onMove); document.removeEventListener("pointerup", end); document.removeEventListener("pointercancel", end);
+        tile.style.transition = SPRING; tile.style.transform = "";
+        setTimeout(function () { swallow = false; }, 400);
+        var ids = [].slice.call(qg.children).map(function (t) { return Number(t.dataset.id); });
+        if (ids.join() !== quickIds.join()) setTimeout(function () { saveQuick(ids); }, 300);
+      }
+      tile.addEventListener("pointerup", end); tile.addEventListener("pointercancel", end);
+    }
+    quickApps.forEach(function (a, ix) {
+      var tile = state.editQ ? el("div", "proj") : el("a", "proj");
+      tile.dataset.id = a.id; enableDrag(tile);
+      if (!state.editQ) { var qu = safeUrl(a.url); if (qu) { tile.href = qu; tile.target = "_self"; } }
+      tile.appendChild(el("b", null, a.short || a.name)); tile.appendChild(el("span", null, STATUS[a.status] || "Not confirmed"));
+      if (state.editQ) {
+        var cr = el("div", "qctl");
+        [["▲", -1], ["▼", 1], ["✕", 0]].forEach(function (c) {
+          var b = el("button", "btn", c[0]); b.type = "button";
+          b.onclick = function () {
+            var ids = quickIds.slice(), j = ix + c[1];
+            if (c[1] === 0) ids.splice(ix, 1); else { if (j < 0 || j >= ids.length) return; var t = ids[ix]; ids[ix] = ids[j]; ids[j] = t; }
+            saveQuick(ids);
+          };
+          cr.appendChild(b);
+        });
+        tile.appendChild(cr);
+      }
+      qg.appendChild(tile);
+    });
+    add(qg);
+    if (!quickApps.length) add(el("p", "empty", "Nothing pinned. Tap Edit, then + Quick on an app below."));
+    add(el("p", "small muted", state.editQ ? "Use ▲ ▼ to reorder, ✕ to remove. Tap + Quick on any app below to add it." : "Hold a tile, then drag it to move it."));
+    var mainApps = inGrp("main").filter(function (a) { return state.q || state.editQ || !a.quick; }), consoleApps = inGrp("console"), foldedApps = inGrp("folded");
+    heading((quickApps.length ? "Other apps (" : "Apps (") + mainApps.length + ")");
+    searchBox("Search apps");
+    var n = mainApps.length;
+    function appCard(a) {
+      var d = el("div", "app");
+      d.appendChild(el("i", "dot st-" + (STATUS[a.status] ? a.status : "unconf")));
+      var t = el("div", "ibody");
+      t.appendChild(el("b", null, a.name));
+      if (a.about) t.appendChild(el("div", "desc", a.about));
+      if (a.note) t.appendChild(el("div", "todo", a.note));
+      var mt = el("div", "meta"); mt.appendChild(el("span", null, STATUS[a.status] || "Not confirmed")); if (a.changed) mt.appendChild(el("span", null, "Changed " + a.changed)); t.appendChild(mt);
+      d.appendChild(t);
+      var u = safeUrl(a.url);
+      if (state.editQ && !a.quick) { var pq = el("button", "btn", "+ Quick"); pq.type = "button"; pq.onclick = function () { saveQuick(quickIds.concat(a.id)); }; d.appendChild(pq); }
+      else if (u) { var l = el("a", "btn", "Open"); l.href = u; l.target = "_self"; d.appendChild(l); }
+      return d;
+    }
+    mainApps.forEach(function (a) { add(appCard(a)); });
+    if (!n && !consoleApps.length && !foldedApps.length) add(el("p", "empty", "No apps match."));
+    [["Council", consoleApps], ["Folded away", foldedApps]].forEach(function (g) {
+      if (!g[1].length) return;
+      var det = el("details", "fold"); if (state.q) det.open = true;
+      det.appendChild(el("summary", null, g[0] + " (" + g[1].length + ")"));
+      g[1].forEach(function (a) { det.appendChild(appCard(a)); });
+      add(det);
+    });
+    heading("Start a chat in a project");
+    var g = el("div", "grid"); projectGrid(g, newChat); add(g);
+  }
+  async function bulkDone(cs) {
+    var prev = cs.map(function (c) { return [c, c.status]; });
+    cs.forEach(function (c) { c.status = "done"; c.updated_at = new Date().toISOString(); }); render();
+    try {
+      await api("update", { action: "chats_done_bulk", ids: cs.map(function (c) { return c.id; }) });
+      toast(cs.length + " marked Done", function () { prev.forEach(function (p) { setStatus(p[0], p[1], false); }); });
+    } catch (e) { prev.forEach(function (p) { p[0].status = p[1]; }); render(); toast("Not saved: " + e.message); }
+  }
+  var renaming = null;
+  function openRename(c) { renaming = c; $("rnText").value = c.title || ""; $("rnErr").textContent = ""; $("rnDlg").showModal(); }
+  function pageTriage(L) {
+    var left = L.tTriage, sorted = state.data.items.filter(function (i) { return i.triaged_at && inProject(i); }).length;
+    var total = left.length + sorted;
+    var pr = el("div", "meta"); pr.appendChild(el("span", null, left.length + " left to sort" + (sorted ? " - " + sorted + " sorted" : ""))); add(pr);
+    var bar = el("div", "prog"); var fill = el("i"); fill.style.width = (total ? Math.round(100 * sorted / total) : 100) + "%"; bar.appendChild(fill); add(bar);
+    if (!left.length) {
+      add(el("p", "empty", "All sorted. Nice work. Anything you kept is under Tasks."));
+    } else {
+      var i = left[0];
+      var card = el("div", "tri"); card.style.borderLeftColor = colour(i.project);
+      var meta = el("div", "meta");
+      var dt = el("span", "dot"); dt.style.background = colour(i.project); meta.appendChild(dt); meta.appendChild(el("span", null, i.project));
+      if (i.kind === "question") meta.appendChild(el("span", "badge q", "QUESTION"));
+      if (i.kind === "deadline") meta.appendChild(el("span", "badge d", "DEADLINE"));
+      if (i.due_on) { var dd = String(i.due_on).slice(0, 10), gap = daysBetween(TODAY, dd); meta.appendChild(el("span", "badge" + (gap <= 0 ? " late" : " d"), gap < 0 ? "Overdue " + fmtDate(dd) : gap === 0 ? "Due today" : "Due " + fmtDate(dd))); }
+      if (i.created_at) { var age = daysBetween(ukDay(i.created_at), TODAY); if (age >= 1) meta.appendChild(el("span", null, age + " day" + (age === 1 ? "" : "s") + " on the board")); }
+      card.appendChild(meta);
+      var tt = el("div", "ttext"); tt.appendChild(el("span", "iid", "#" + i.id)); tt.appendChild(document.createTextNode(i.text)); card.appendChild(tt);
+      var tb = el("div", "trib");
+      [["ok", "Done ✓  (already sorted)", "done"], ["keep", "Keep  (still to do)", "keep"], ["drop", "Not needed", "drop"]].forEach(function (x) {
+        var b = el("button", "btn " + x[0], x[1]); b.type = "button";
+        b.onclick = function () {
+          if (x[2] === "done") askAnswer(i, function (ans) { triage(i, "done", ans); }, true);
+          else triage(i, x[2]);
+        };
+        tb.appendChild(b);
+      });
+      card.appendChild(tb);
+      var row = el("div", "trirow");
+      var sk = el("button", "btn", "Skip for now"); sk.type = "button"; sk.onclick = function () { state.skipN += 1; state.skipped[i.id] = state.skipN; render(); }; row.appendChild(sk);
+      var di = el("button", "btn", "Do it"); di.type = "button"; di.onclick = function () { doIt(i); }; row.appendChild(di);
+      card.appendChild(row);
+      add(card);
+    }
+    if (state.lastTri) {
+      var u = el("button", "btn", "Undo last (" + ({ done: "Done", keep: "Keep", drop: "Not needed" })[state.lastTri.outcome] + ")"); u.type = "button"; u.style.marginTop = "10px"; u.style.width = "100%";
+      u.onclick = untriage; add(u);
+    }
+    add(el("p", "small muted", "Tip: Keep = it stays in Tasks. Not needed = it goes to Ticked off, marked NOT NEEDED, and you can bring it back from there."));
+  }
+  async function triage(i, outcome, ans) {
+    var prev = { triaged_at: i.triaged_at, outcome: i.outcome, done: i.done, done_at: i.done_at, answer: i.answer, answer_synced_at: i.answer_synced_at };
+    i.triaged_at = new Date().toISOString(); i.outcome = outcome; i.done = outcome !== "keep"; i.done_at = i.done ? i.triaged_at : null;
+    if (ans) { i.answer = ans; i.answer_synced_at = null; }
+    state.lastTri = { i: i, outcome: outcome, prev: prev };
+    render();
+    var tb = { action: "item_triage", id: i.id, outcome: outcome };
+    if (ans) tb.answer = ans;
+    try { await api("update", tb); if (ans) toast("Answer saved"); }
+    catch (e) { Object.assign(i, prev); state.lastTri = null; render(); toast("Not saved: " + e.message); }
+  }
+  async function untriage() {
+    var t = state.lastTri; if (!t) return;
+    state.lastTri = null; Object.assign(t.i, { triaged_at: null, outcome: "", done: false, done_at: null }); render();
+    try { await api("update", { action: "item_untriage", id: t.i.id }); toast("Undone"); }
+    catch (e) { toast("Not saved: " + e.message); load(); }
+  }
+  function pageSub(L) {
+    var k = state.sub;
+    if (k === "c-fin" && L.cFin.length) {
+      var all = el("button", "btn primary", "Mark all " + L.cFin.length + " as Done"); all.type = "button"; all.style.width = "100%"; all.style.marginTop = "8px";
+      all.onclick = function () { bulkDone(L.cFin); }; add(all);
+    }
+    var chatsMap = { "c-fin": L.cFin, "c-now": L.cNow, "c-today": L.cToday, "c-unres": L.cUnres, "c-wrap": L.cWrap, "c-watch": L.cWatch, "c-all": L.cAll, "c-done": L.cDone };
+    var itemsMap = { "t-over": L.tOver, "t-soon": L.tSoon, "t-q": L.tQ, "t-todo": L.tTodo, "t-done": L.tDone };
+    if (chatsMap[k]) {
+      var cs = chatsMap[k];
+      if (k === "c-all") {
+        searchBox("Search chats");
+        cs = cs.filter(function (c) { return match(c.title + " " + c.note + " " + c.next_step); });
+        var byDay = {};
+        cs.forEach(function (c) { var d = c.started_on ? String(c.started_on).slice(0, 10) : "B"; (byDay[d] = byDay[d] || []).push(c); });
+        var keys = Object.keys(byDay).sort(function (a, b) { if ((a === "B") !== (b === "B")) return a === "B" ? 1 : -1; return b.localeCompare(a); });
+        if (!keys.length) add(el("p", "empty", "No chats."));
+        keys.forEach(function (d) { heading((d === "B" ? "Before the board started" : "Started " + fmtDate(d)) + " (" + byDay[d].length + ")"); byDay[d].forEach(function (c) { add(chatCard(c)); }); });
+      } else {
+        list(cs.map(chatCard), k === "c-done" ? "No chats finished in the last 14 days." : "No chats here.");
+        if (k === "c-done" && L.tDone.length) { heading("Ticked off (" + L.tDone.length + ")"); L.tDone.forEach(function (i) { add(itemRow(i)); }); }
+      }
+    } else if (k === "t-triage") {
+      pageTriage(L);
+    } else if (k === "t-week") {
+      pageWeek(L);
+    } else if (k === "t-wait") {
+      searchBox("Search waiting on");
+      var ws = L.tWait.filter(function (i) { return match(i.text + " " + i.waiting_on); });
+      if (!ws.length) add(el("p", "empty", "Nothing waiting on anyone. Add one with + Add, type Waiting on someone."));
+      var by = {}, order = [];
+      ws.forEach(function (i) { var who = String(i.waiting_on || "Unknown").trim(), key = who.toLowerCase(); if (!by[key]) { by[key] = { who: who, items: [] }; order.push(key); } by[key].items.push(i); });
+      order.forEach(function (key) { var grp = by[key]; heading(grp.who + " (" + grp.items.length + ") - longest " + waitDays(grp.items[0]) + " days"); grp.items.forEach(function (i) { add(itemRow(i)); }); });
+    } else if (itemsMap[k]) {
+      searchBox("Search");
+      list(itemsMap[k].filter(function (i) { return match(i.text); }).map(function (i) { return itemRow(i); }), "Nothing here.");
+    }
+  }
+
+  function render() {
+    if (!state.data) return;
+    var L = lists();
+    document.body.dataset.ccPage=state.page;
+    renderChrome(L);
+    $("main").innerHTML = "";
+    if (state.sub && SUBS[state.sub]) pageSub(L);
+    else if (state.page === "chats") pageChats(L);
+    else if (state.page === "tasks") pageTasks(L);
+    else if (state.page === "apps") pageApps();
+    else if (state.page === "projects") pageProjects();
+    else pageHome(L);
+  }
+
+  // Header controls
+  (function () {
+    var sel = $("projPick");
+    ["All"].concat(PROJECTS).forEach(function (p) { var o = el("option", null, p === "All" ? "All projects" : p); o.value = p; sel.appendChild(o); });
+    sel.value = state.project;
+    sel.onchange = function () { state.project = sel.value; saveView(); render(); };
+  })();
+  $("back").onclick = function () { go(SUBS[state.sub] ? SUBS[state.sub][0] : "home"); };
+
+  // Add dialog
+  var addChat = null;
+  function openAdd(chat) {
+    addChat = chat || null;
+    $("fText").value = ""; $("fDue").value = ""; $("fErr").textContent = ""; $("fKind").value = "action"; $("fWho").value = ""; $("fWhoBox").style.display = "none";
+    var sel = $("fProject"); sel.innerHTML = "";
+    PROJECTS.forEach(function (p) { var o = el("option", null, p); o.value = p; sel.appendChild(o); });
+    sel.value = chat ? chat.project : (state.project !== "All" ? state.project : "General");
+    sel.disabled = !!chat;
+    var g = $("newChatGrid"); g.innerHTML = "";
+    $("ncLabel").style.display = chat ? "none" : ""; g.style.display = chat ? "none" : "";
+    if (!chat) projectGrid(g, function (p) { $("dlg").close(); newChat(p); });
+    $("dlg").showModal();
+  }
+  $("addBtn").onclick = function () { openAdd(null); };
+  $("fCancel").onclick = function () { $("dlg").close(); };
+  $("goCancel").onclick = function () { $("goDlg").close(); };
+  $("fSave").onclick = async function () {
+    var text = $("fText").value.trim();
+    if (!text) { $("fErr").textContent = "Type something first."; return; }
+    if ($("fKind").value === "waiting" && !$("fWho").value.trim()) { $("fErr").textContent = "Say who you are waiting on."; return; }
+    $("fSave").disabled = true;
+    try {
+      await api("update", { action: "item_add", text: text, kind: $("fKind").value, waiting_on: $("fWho").value.trim(), project: $("fProject").value, due_on: $("fDue").value || null, chat_id: addChat ? addChat.id : null });
+      $("dlg").close(); toast("Added"); await load();
+    } catch (e) { $("fErr").textContent = "Not saved: " + e.message; }
+    finally { $("fSave").disabled = false; }
+  };
+  $("fKind").onchange = function () { $("fWhoBox").style.display = $("fKind").value === "waiting" ? "" : "none"; };
+  // Edit dialog (item 8)
+  var editing = null;
+  function openEdit(i) {
+    editing = i;
+    $("eText").value = i.text; $("eKind").value = i.kind || "action"; $("eDue").value = i.due_on ? String(i.due_on).slice(0, 10) : "";
+    $("eWho").value = i.waiting_on || ""; $("eSince").value = i.kind === "waiting" ? waitStart(i) : TODAY; $("eErr").textContent = "";
+    $("eWhoBox").style.display = i.kind === "waiting" ? "" : "none";
+    var sel = $("eProject"); sel.innerHTML = ""; PROJECTS.forEach(function (p) { var o = el("option", null, p); o.value = p; sel.appendChild(o); }); sel.value = i.project;
+    $("edDlg").showModal();
+  }
+  $("eKind").onchange = function () { $("eWhoBox").style.display = $("eKind").value === "waiting" ? "" : "none"; };
+  $("eCancel").onclick = function () { $("edDlg").close(); };
+  $("eSave").onclick = async function () {
+    var i = editing; if (!i) return;
+    var body = { action: "item_edit", id: i.id, text: $("eText").value.trim(), kind: $("eKind").value, due_on: $("eDue").value || null, project: $("eProject").value, waiting_on: $("eWho").value.trim(), waiting_since: $("eSince").value || null };
+    if (!body.text) { $("eErr").textContent = "Type something first."; return; }
+    if (body.kind === "waiting" && !body.waiting_on) { $("eErr").textContent = "Say who you are waiting on."; return; }
+    $("eSave").disabled = true;
+    try { await api("update", body); $("edDlg").close(); toast("Saved"); await load(); }
+    catch (e) { $("eErr").textContent = "Not saved: " + e.message; }
+    finally { $("eSave").disabled = false; }
+  };
+  $("rnCancel").onclick = function () { $("rnDlg").close(); };
+  $("rnSave").onclick = async function () {
+    var t = $("rnText").value.trim(); if (!t) { $("rnErr").textContent = "Type a name first."; return; }
+    var c = renaming, old = c.title; c.title = t; $("rnDlg").close(); render();
+    try { await api("update", { action: "chat_rename", id: c.id, title: t }); toast("Renamed", function () { c.title = old; render(); api("update", { action: "chat_rename", id: c.id, title: old }); }); }
+    catch (e) { c.title = old; render(); toast("Not saved: " + e.message); }
+  };
+  $("helpBtn").onclick = function () { $("helpDlg").showModal(); $("helpDlg").scrollTop = 0; $("helpClose").blur(); };
+  $("helpClose").onclick = function () { $("helpDlg").close(); };
+  $("refresh").onclick = function () { load().then(function () { toast("Up to date"); }); };
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") load(); });
+  load();
+})();
+</script>
+</body>
+</html>

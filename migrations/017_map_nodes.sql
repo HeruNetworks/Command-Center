@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS map_nodes (
+  id SERIAL PRIMARY KEY,
+  kind TEXT NOT NULL,
+  name TEXT NOT NULL,
+  project TEXT NOT NULL DEFAULT 'General',
+  about TEXT NOT NULL DEFAULT '',
+  url TEXT NOT NULL DEFAULT '',
+  detail TEXT NOT NULL DEFAULT '',
+  sort INTEGER NOT NULL DEFAULT 100,
+  active BOOLEAN NOT NULL DEFAULT true,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (kind, name)
+)

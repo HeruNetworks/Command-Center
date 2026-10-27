@@ -1,0 +1,7 @@
+name = "Heru Command Centre"
+
+# Weekday overdue email. Fires 06:00 and 07:00 UTC; the handler only sends
+# in the 07:00 London hour (works in both summer and winter time), once a day.
+[[cron]]
+path     = "/api/jobs/nudge"
+schedule = "0 6,7 * * 1-5"
