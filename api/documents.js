@@ -25,7 +25,7 @@ async function list(req, res) {
   if (q.waiting === "1") where.push(DOC_WAITING);
   const r = await db.query(
     "SELECT x.* FROM (" + DOC_SELECT + ") x" + (where.length ? " WHERE " + where.join(" AND ") : "") +
-    " ORDER BY COALESCE(x.doc_date, (x.created_at AT TIME ZONE 'Europe/London')::date) DESC, x.id DESC LIMIT 2000", p
+    " ORDER BY COALESCE(x.doc_date::date, (x.created_at AT TIME ZONE 'Europe/London')::date) DESC, x.id DESC LIMIT 2000", p
   );
   res.json({ documents: r.rows, kinds: DOC_KINDS, statuses: DOC_STATUSES });
 }
