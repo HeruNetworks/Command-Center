@@ -9,6 +9,19 @@ export default async function (req, res) {
   const nodes = await db.query(
     "SELECT id, kind, name, project, about, url, detail, sort FROM map_nodes WHERE active = true ORDER BY kind, sort, name"
   );
+  // Documents nodes (one per project, 27 Oct 2026): show the live count, hide projects with none yet.
+  try {
+    const dc = await db.query("SELECT d.project, count(*)::int AS n FROM documents d WHERE d.status <> 'superseded' AND NOT EXISTS (SELECT 1 FROM documents x WHERE x.supersedes_id = d.id) GROUP BY d.project");
+    const by = {};
+    dc.rows.forEach(function (r) { by[r.project] = r.n; });
+    nodes.rows = nodes.rows.filter(function (n) {
+      if (n.kind !== "doc" || String(n.url).indexOf("/documents.html") < 0) return true;
+      const c = by[n.project] || 0;
+      n.name = n.name + " (" + c + ")";
+      n.about = c + " current document" + (c === 1 ? "" : "s") + " in " + n.project + ". Open lists them, newest first.";
+      return c > 0;
+    });
+  } catch (e) { nodes.rows = nodes.rows.filter(function (n) { return String(n.url).indexOf("/documents.html") < 0; }); }
   const apps = await db.query(
     "SELECT id, name, short, about, url, status, grp FROM apps WHERE grp <> 'folded' ORDER BY sort, name"
   );

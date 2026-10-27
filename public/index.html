@@ -162,6 +162,17 @@
 .badge.heavy{background:#5a1f1f;color:#ffd0d0;border:0;cursor:pointer;font-family:inherit}
 details.fold{margin:12px 0}details.fold>summary{cursor:pointer;font-size:16px;font-weight:700;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:44px;display:flex;align-items:center}details.fold[open]>summary{margin-bottom:8px}
 pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}nav.bar button{font-size:12.5px}.small{font-size:15px}
+  /* Documents strip and item chips (27 Oct 2026) */
+  .cc-docs { margin: 14px 0; }
+  .cc-docs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .cc-docs-head h2 { margin: 0; }
+  .cc-docs-head .btn { min-height: 36px; padding: 4px 12px; font-size: 13px; }
+  .cc-docs-head .btn.wait { border-color: var(--warn); color: var(--warn); }
+  .cc-doc { display: flex; gap: 8px; align-items: center; min-height: 44px; padding: 8px 12px; margin-top: 6px; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 12px; color: var(--text); text-decoration: none; font-size: 14px; }
+  .cc-doc .t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cc-doc small { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+  .badge.docchip { background: #23485a; color: #bfe8ff; text-decoration: none; }
+  .badge.docchip.draft { background: #5a1f1f; color: #ffd0d0; }
 </style><link rel="stylesheet" href="/board-skin.css?v=1">
 </head>
 <body>
@@ -516,6 +527,25 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
       toast("Moved to " + STNAME[to], offerUndo ? function () { setStatus(c, old, false); } : null);
     } catch (e) { c.status = old; c.updated_at = oldU; render(); toast("Not saved: " + e.message); }
   }
+  // Documents (27 Oct 2026): latest 5 on Home, plus a chip on any item a document is linked to.
+  function docsData() { return (state.data && state.data.docs) || { recent: [], waiting: 0, by_item: [] }; }
+  function docsFor(itemId) { return docsData().by_item.filter(function (x) { return x.item_id === itemId && x.status !== "superseded"; }); }
+  function docStrip() {
+    var d = docsData(), sec = el("section", "cc-docs"), hd = el("div", "cc-docs-head");
+    sec.setAttribute("aria-label", "Recent documents");
+    hd.appendChild(el("h2", null, "Recent documents"));
+    var all = el("a", "btn" + (d.waiting ? " wait" : ""), d.waiting ? d.waiting + " waiting \u00b7 All" : "All documents"); all.href = "/documents.html"; hd.appendChild(all);
+    sec.appendChild(hd);
+    if (!d.recent.length) sec.appendChild(el("p", "small muted", "Nothing yet. Every file a chat makes for you will be listed here."));
+    d.recent.forEach(function (x) {
+      var a = el("a", "cc-doc"); a.href = "/documents.html?id=" + x.id; a.style.borderLeftColor = colour(x.project);
+      a.appendChild(el("span", "badge" + (x.status === "draft" ? " late" : ""), x.status === "draft" ? "DRAFT" : String(x.status).toUpperCase()));
+      a.appendChild(el("span", "t", "#" + x.id + " " + x.title));
+      if (x.doc_date) a.appendChild(el("small", null, fmtDate(x.doc_date)));
+      sec.appendChild(a);
+    });
+    return sec;
+  }
   function itemRow(i, inCard) {
     var row = el("div", "item" + (i.done ? " done" : ""));
     if (inCard) { row.style.margin = "6px 0"; row.style.background = "var(--panel2)"; }
@@ -540,6 +570,7 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
       meta.appendChild(el("span", "badge" + (gap <= 0 && !i.done ? " late" : " d"), gap < 0 ? "Overdue " + fmtDate(dd) : gap === 0 ? "Due today" : "Due " + fmtDate(dd)));
     }
     if (!i.done && i.created_at && i.kind !== "waiting") { var age = daysBetween(ukDay(i.created_at), TODAY); if (age >= 1) meta.appendChild(el("span", null, age + " day" + (age === 1 ? "" : "s") + " old")); }
+    docsFor(i.id).forEach(function (x) { var dc = el("a", "badge docchip" + (x.status === "draft" ? " draft" : ""), "DOC #" + x.id + (x.status === "draft" ? " DRAFT" : "")); dc.href = "/documents.html?id=" + x.id; dc.title = x.title; meta.appendChild(dc); });
     body.appendChild(meta);
     if (i.done && i.answer) {
       var ab = el("div", "ans"); ab.appendChild(el("b", null, "Answer: ")); ab.appendChild(document.createTextNode(i.answer));
@@ -681,6 +712,7 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     var focus=el("section","cc-focus");focus.setAttribute("aria-label","Your next three actions");focus.appendChild(el("h2",null,"Mario, these need you"));focus.appendChild(el("p","cc-focus-rule","Overdue first, then due soon, then open questions."));
     var seen={},priority=L.tOver.concat(L.tSoon,L.tQ).filter(function(i){if(seen[i.id])return false;seen[i.id]=true;return true}).slice(0,3),focusList=el("div","cc-priorities");
     priority.forEach(function(i){focusList.appendChild(itemRow(i));});if(!priority.length)focusList.appendChild(el("p","empty","Nothing urgent here. Choose a project or open your task list."));focus.appendChild(focusList);add(focus);
+    add(docStrip());
     var ns = (state.data.meta || {}).nudge_status;
     if (ns && String(ns.value).indexOf("FAILED") === 0) { var nb = el("div", "banner"); nb.appendChild(el("span", null, "07:00 email problem: " + ns.value + ". Ask Claude to check the Command Centre nudge.")); add(nb); }
     if (L.cWork.length) { heading("Claude working now (" + L.cWork.length + ")"); L.cWork.forEach(function (c) { add(chatCard(c)); }); }
