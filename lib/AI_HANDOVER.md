@@ -2,6 +2,17 @@
 
 Read this file, list_deployments, and re-read any live file before editing. This project is private and its APIs are admin-only. Do not loosen access or publish account data to public files.
 
+## 27 Oct 2026 — v38 — Claude (Claude Code session) — checklist photos and full names
+
+Mario asked for photos taken straight from the checklist and full names always. Restore point: v37 (GitHub commit 44d37d6). This code: commit c36f890.
+- api/photos.js (new, admin): POST JSON {item_id, data: JPEG data URL} -> checks magic bytes, max 5 MB, stores at checklists/<item>/<uuid>.jpg in private app storage, returns {key, at}. GET ?key= only if that key is saved on that item's checklist_rows, then 302 to a 60-second signed URL. Photos are not copied to Drive; a chat can copy them when building an evidence pack.
+- api/update.js checklist_save keeps row photos [{key, at}] (keys must match checklists/<that id>/<uuid>.jpg, max 20 per row).
+- api/lists.js ?checklist also returns people: full names already used (checklist persons and payees with two or more words).
+- public/checklist.html: Take photo per check (camera, shrunk on the phone to 1600 px JPEG 0.8), thumbnails open full size; person field suggests full names, warns on a single name, FULL NAME? badge, tap a name to correct it.
+- Data: #576 persons changed to full names from records (Ozgur Koz, Andrii Reznichenko, Niamatullah Nabizada, Mahli-I Congo-Nyah, Reece Henry; Mark's surname MISSING). #566 payee Andrii Reznichenko. One 8x8 test JPEG left unlinked in storage (checklists/576/ac894d49-...jpg).
+
+Tested: local Playwright 320/390/1440 (real file through the camera input, thumbnail, save keeps photos, warnings, no overflow or errors). Live: POST 200, non-JPEG 415, anonymous 401, unsaved key 404, stored file opens; checklist page shows the photo buttons. Not tested: a real phone camera.
+
 ## 27 Oct 2026 — v36 — Claude (Claude Code session) — site checklists and ZS pay list
 
 Mario said "Go" to steps 3 and 4. Restore point: v35 (exact files in GitHub HeruNetworks/Command-Center commit 5285dae; Drive note 2026-10-27-before-checklist-and-pay-list.md). Shipped in one deploy, not two.
