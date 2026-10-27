@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Documents</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: calc(6px + env(safe-area-inset-top)) 16px 8px; border-bottom: 1px solid var(--line); }
+  .top { display: flex; align-items: center; gap: 8px; }
+  .top h1 { flex: 1 1 auto; margin: 0; font-size: 20px; min-width: 0; }
+  .top .btn { min-height: 40px; padding: 6px 12px; flex: 0 0 auto; }
+  main { padding: 8px 16px 40px; max-width: 760px; margin: 0 auto; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips .lbl { flex: 0 0 auto; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; align-self: center; min-width: 52px; }
+  .chip { flex: 0 0 auto; min-height: 34px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 700; }
+  #q { margin-top: 8px; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 6px; }
+  .wait { background: var(--panel); border: 1px solid #4a3a10; border-radius: var(--radius); padding: 8px 12px; margin-top: 10px; }
+  .wait h2 { margin: 4px 0 6px; color: var(--warn); }
+  .wrow { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+  .wrow:first-of-type { border-top: 0; }
+  .wrow .wt { flex: 1 1 auto; min-width: 0; font-size: 14px; }
+  .wrow .wt small { display: block; color: var(--muted); font-size: 12px; }
+  .wrow .btn { min-height: 36px; padding: 4px 10px; font-size: 13px; flex: 0 0 auto; }
+  .doc { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: var(--radius); padding: 10px 12px; margin: 10px 0; }
+  .doc.old { opacity: .7; }
+  .doc.hl { box-shadow: 0 0 0 2px var(--accent) inset; }
+  .doc h3 { margin: 0 0 4px; font-size: 16px; line-height: 1.3; overflow-wrap: anywhere; }
+  .doc h3 .iid { color: var(--muted); font-weight: 600; margin-right: 6px; }
+  .meta { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 3px 10px; align-items: center; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .desc { margin: 6px 0 2px; font-size: 14px; overflow-wrap: anywhere; }
+  .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--panel2); color: var(--muted); }
+  .badge.draft { background: #5a1f1f; color: #ffd0d0; }
+  .badge.final { background: #1d4030; color: #c7f5d9; }
+  .badge.sent { background: #2b3f63; color: #cfe0ff; }
+  .badge.signed, .badge.paid { background: #1d4030; color: #c7f5d9; }
+  .badge.superseded { background: var(--panel2); color: var(--muted); text-decoration: line-through; }
+  .doc p { margin: 4px 0; }
+  .note { font-size: 12px; margin-top: 6px; color: var(--warn); }
+  .acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+  .acts .btn { min-height: 40px; padding: 4px 6px; font-size: 13px; min-width: 0; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 8px; }
+  .toggle { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 8px 0; cursor: pointer; text-decoration: underline; }
+  dialog { width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 24px); border: 1px solid var(--line); border-radius: 16px; background: var(--panel); color: var(--text); padding: 16px; }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h3 { margin: 0 0 6px; }
+  dialog label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dacts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .dacts .btn { flex: 1 1 120px; }
+  .err { color: var(--bad); font-size: 13px; min-height: 1em; margin: 6px 0 0; }
+  .warnbox { background: #4a3a10; color: var(--warn); border-radius: 10px; padding: 8px 10px; font-size: 14px; margin: 8px 0; }
+  .step { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
+  .step b { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--panel2); display: inline-flex; align-items: center; justify-content: center; }
+  .step .btn { flex: 1 1 auto; }
+  .toast { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; display: none; z-index: 20; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <a class="btn" href="/" aria-label="Back to the board">&larr; Board</a>
+    <h1>Documents</h1>
+    <button class="btn primary" type="button" id="addBtn">+ Add</button>
+  </div>
+  <input id="q" type="search" placeholder="Search title, who, file name" aria-label="Search documents" autocomplete="off">
+</header>
+<main id="main"><p class="empty">Loading...</p></main>
+
+<dialog id="edDlg">
+  <form method="dialog" onsubmit="return false">
+    <h3 id="edTitle">Add a document</h3>
+    <p class="small muted">The file stays in Google Drive. Paste its link (Drive: Share &gt; Copy link).</p>
+    <label for="eUrl">Drive link</label><input id="eUrl" inputmode="url" placeholder="https://drive.google.com/file/d/...">
+    <label for="eName">Title</label><input id="eName" maxlength="200">
+    <label for="eDesc">One-line description</label><input id="eDesc" maxlength="500">
+    <div class="row2">
+      <div><label for="eProj">Project</label><select id="eProj"></select></div>
+      <div><label for="eKind">Kind</label><select id="eKind"></select></div>
+    </div>
+    <div class="row2">
+      <div><label for="eStatus">Status</label><select id="eStatus"></select></div>
+      <div><label for="eDate">Date</label><input id="eDate" type="date"></div>
+    </div>
+    <div class="row2">
+      <div><label for="eParty">Who it is for / from</label><input id="eParty" maxlength="120"></div>
+      <div><label for="eDue">Due (optional)</label><input id="eDue" type="date"></div>
+    </div>
+    <label for="eTags">Tags (commas)</label><input id="eTags" placeholder="e.g. ECMWF, INV-690">
+    <div class="row2">
+      <div><label for="eSup">Replaces #</label><input id="eSup" inputmode="numeric" placeholder="old version"></div>
+      <div><label for="eItem">Board item #</label><input id="eItem" inputmode="numeric"></div>
+    </div>
+    <p class="err" id="eErr"></p>
+    <div class="dacts"><button class="btn" type="button" id="eCancel">Cancel</button><button class="btn primary" type="button" id="eSave">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="mailDlg">
+  <h3>Email this document</h3>
+  <p class="small muted" id="mailName"></p>
+  <div class="step"><b>1</b><a class="btn primary" id="mailDl" target="_blank" rel="noopener">Download the PDF</a></div>
+  <div class="step"><b>2</b><a class="btn primary" id="mailGo">Open email draft</a></div>
+  <p class="small muted">Attach the downloaded file yourself. The email has no Drive link: Drive files are private, so they would only see "Request access". Nothing is sent from this app.</p>
+  <div class="dacts"><button class="btn" type="button" id="mailClose">Close</button></div>
+</dialog>
+
+<dialog id="shareDlg">
+  <h3>Share link</h3>
+  <p class="small muted" id="shareName"></p>
+  <div class="warnbox">Only works if this file is shared with them in Drive.</div>
+  <div class="dacts"><button class="btn" type="button" id="shareClose">Cancel</button><button class="btn" type="button" id="shareCopy">Copy link</button><button class="btn primary" type="button" id="shareGo">Share</button></div>
+</dialog>
+
+<dialog id="sentDlg">
+  <h3>Mark as sent</h3>
+  <p class="small muted" id="sentName"></p>
+  <label for="sentTo">Who did it go to?</label><input id="sentTo" maxlength="200" placeholder="e.g. Binghi at ZS">
+  <p class="err" id="sentErr"></p>
+  <div class="dacts"><button class="btn" type="button" id="sentCancel">Cancel</button><button class="btn primary" type="button" id="sentSave">Save</button></div>
+</dialog>
+
+<dialog id="guardDlg">
+  <h3 id="gTitle">Check first</h3>
+  <p id="gText"></p>
+  <div class="dacts" id="gActs"></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  var PROJECTS = ["Legal", "ZS Cabling", "Site Work", "Business Admin", "Learning", "Personal", "App Builder", "General"];
+  var COLOURS = { "Legal": "#ff6b6b", "ZS Cabling": "#4dabf7", "Site Work": "#ffa94d", "Business Admin": "#69db7c", "Learning": "#b197fc", "Personal": "#f783ac", "App Builder": "#ffd43b", "General": "#adb5bd" };
+  var KINDS = ["statement", "invoice", "self-bill", "evidence pack", "report", "letter", "contract", "sheet", "other"];
+  var STATUSES = ["draft", "final", "sent", "signed", "paid", "superseded"];
+  var qs = new URLSearchParams(location.search);
+  var state = { docs: [], byId: {}, f: { project: qs.get("project") || "", kind: qs.get("kind") || "", status: qs.get("status") || "", tag: qs.get("tag") || "" }, q: qs.get("q") || "", old: false, hl: parseInt(qs.get("id"), 10) || 0, editing: null };
+
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function colour(p) { return COLOURS[p] || COLOURS.General; }
+  function safeUrl(u) { u = String(u || ""); return u.indexOf("https://") === 0 ? u : null; }
+  function fmtDate(s) { if (!s) return ""; var d = new Date(String(s).slice(0, 10) + "T12:00:00Z"); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
+  function ukDay(ts) { return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/London" }); }
+  function dayOf(d) { return d.doc_date || ukDay(d.created_at); }
+  function toast(msg) { var t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = "none"; }, 2600); }
+
+  async function api(method, body, query) {
+    var opt = { method: method, headers: {} };
+    if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(body); }
+    var r = await fetch("/api/documents" + (query || ""), opt);
+    if (!r.ok) { var t = "Error " + r.status; try { var j = await r.json(); if (j.error) t = j.error; } catch (e) {} throw new Error(t); }
+    return r.json();
+  }
+  async function load() {
+    try {
+      var j = await api("GET");
+      state.docs = j.documents || []; state.byId = {};
+      state.docs.forEach(function (d) { state.byId[d.id] = d; });
+      render();
+      if (state.hl) { var c = document.querySelector('[data-id="' + state.hl + '"]'); if (c) c.scrollIntoView({ block: "center" }); state.hl = 0; }
+    } catch (e) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "Could not load documents: " + e.message)); }
+  }
+
+  // Links built from the Drive file id.
+  function downloadUrl(d) {
+    var id = encodeURIComponent(d.drive_file_id), m = d.mime || "";
+    if (m === "application/vnd.google-apps.document") return "https://docs.google.com/document/d/" + id + "/export?format=pdf";
+    if (m === "application/vnd.google-apps.spreadsheet") return "https://docs.google.com/spreadsheets/d/" + id + "/export?format=pdf";
+    return "https://drive.google.com/uc?export=download&id=" + id;
+  }
+  function viewUrl(d) { return safeUrl(d.drive_url) || "https://drive.google.com/file/d/" + encodeURIComponent(d.drive_file_id) + "/view"; }
+  // Newest version in a chain of replacements (#3 replaced by #7 replaced by #9 -> #9).
+  function newest(d) { var cur = d, seen = {}; while (cur && cur.replaced_by && !seen[cur.id]) { seen[cur.id] = 1; cur = state.byId[cur.replaced_by] || null; } return cur && cur !== d ? cur : null; }
+
+  // Before Email, Share or Download: placeholder for the version guard (step 2).
+  function guard(d, verb, go) { go(d); }
+
+  // ---------- filters ----------
+  function matches(d, skip) {
+    var f = state.f;
+    if (skip !== "project" && f.project && d.project !== f.project) return false;
+    if (skip !== "kind" && f.kind && d.kind !== f.kind) return false;
+    if (skip !== "status" && f.status && d.status !== f.status) return false;
+    if (skip !== "tag" && f.tag && (d.tags || []).indexOf(f.tag) < 0) return false;
+    if (!state.old && d.status === "superseded" && f.status !== "superseded") return false;
+    var q = state.q.trim().toLowerCase();
+    if (q) { var hay = [d.title, d.description, d.party, d.file_name, (d.tags || []).join(" "), "#" + d.id].join(" ").toLowerCase(); if (hay.indexOf(q) < 0) return false; }
+    return true;
+  }
+  function chipRow(label, key, values) {
+    var row = el("div", "chips"); row.setAttribute("role", "group"); row.setAttribute("aria-label", label);
+    row.appendChild(el("span", "lbl", label));
+    var all = el("button", "chip" + (state.f[key] ? "" : " on"), "All"); all.type = "button"; all.setAttribute("aria-pressed", !state.f[key]);
+    all.onclick = function () { state.f[key] = ""; render(); }; row.appendChild(all);
+    values.forEach(function (v) {
+      var c = el("button", "chip" + (state.f[key] === v ? " on" : ""), v); c.type = "button"; c.setAttribute("aria-pressed", state.f[key] === v);
+      c.onclick = function () { state.f[key] = state.f[key] === v ? "" : v; render(); }; row.appendChild(c);
+    });
+    return row;
+  }
+
+  // ---------- render ----------
+  function isWaiting(d) {
+    if (d.status === "superseded") return false;
+    return (d.due_on && ["paid", "signed"].indexOf(d.status) < 0) || (d.status === "sent" && !d.replied_at);
+  }
+  function waitBox(m) {
+    var w = state.docs.filter(function (d) { return isWaiting(d) && (!state.f.project || d.project === state.f.project); });
+    if (!w.length) return;
+    w.sort(function (a, b) { return String(a.due_on || "9999").localeCompare(String(b.due_on || "9999")) || a.id - b.id; });
+    var box = el("section", "wait"); box.setAttribute("aria-label", "Waiting");
+    box.appendChild(el("h2", null, "Waiting (" + w.length + ")"));
+    w.forEach(function (d) {
+      var r = el("div", "wrow"), t = el("div", "wt");
+      t.appendChild(document.createTextNode("#" + d.id + " " + d.title));
+      var bits = [];
+      if (d.due_on) bits.push((d.due_on < ukDay(new Date()) ? "Overdue " : "Due ") + fmtDate(d.due_on));
+      if (d.status === "sent") bits.push("Sent" + (d.sent_to ? " to " + d.sent_to : "") + (d.sent_at ? " " + fmtDate(ukDay(d.sent_at)) : "") + ", no reply yet");
+      t.appendChild(el("small", null, bits.join(" · ")));
+      r.appendChild(t);
+      var go = el("button", "btn", "Show"); go.type = "button"; go.onclick = function () { state.f = { project: "", kind: "", status: "", tag: "" }; state.q = "#" + d.id; $("q").value = state.q; state.old = true; render(); }; r.appendChild(go);
+      if (d.status === "sent" && !d.replied_at) { var rp = el("button", "btn", "Reply in"); rp.type = "button"; rp.onclick = function () { replied(d); }; r.appendChild(rp); }
+      box.appendChild(r);
+    });
+    m.appendChild(box);
+  }
+  function card(d) {
+    var c = el("article", "doc" + (d.status === "superseded" ? " old" : "") + (state.hl === d.id ? " hl" : ""));
+    c.dataset.id = d.id; c.style.borderLeftColor = colour(d.project);
+    var h = el("h3"); h.appendChild(el("span", "iid", "#" + d.id)); h.appendChild(document.createTextNode(d.title)); c.appendChild(h);
+    var m = el("div", "meta");
+    m.appendChild(el("span", "badge " + d.status, d.status.toUpperCase()));
+    if (d.doc_date || d.created_at) m.appendChild(el("span", null, fmtDate(dayOf(d))));
+    var dt = el("span", "dot"); dt.style.background = colour(d.project); m.appendChild(dt); m.appendChild(el("span", null, d.project));
+    m.appendChild(el("span", null, d.kind));
+    if (d.party) m.appendChild(el("span", null, d.party));
+    c.appendChild(m);
+    if (d.description) c.appendChild(el("p", "desc", d.description));
+    if (d.tags && d.tags.length) { var tg = el("div", "tags"); d.tags.forEach(function (t) { var b = el("button", "tag chip", t); b.type = "button"; b.style.minHeight = "24px"; b.onclick = function () { state.f.tag = t; render(); window.scrollTo(0, 0); }; tg.appendChild(b); }); c.appendChild(tg); }
+    var nw = newest(d);
+    if (nw) c.appendChild(el("p", "note", "Replaced by #" + nw.id + (nw.doc_date ? " (" + fmtDate(nw.doc_date) + ")" : "")));
+    if (d.supersedes_id) c.appendChild(el("p", "small muted", "Replaces #" + d.supersedes_id));
+    if (d.sent_at) c.appendChild(el("p", "small muted", "Sent" + (d.sent_to ? " to " + d.sent_to : "") + " on " + fmtDate(ukDay(d.sent_at)) + (d.replied_at ? ", reply in " + fmtDate(ukDay(d.replied_at)) : "")));
+    if (d.due_on) c.appendChild(el("p", "small muted", "Due " + fmtDate(d.due_on)));
+    if (d.item_id) { var it = el("a", "small", "Board item #" + d.item_id); it.href = "/"; c.appendChild(it); }
+    var a = el("div", "acts");
+    function btn(label, fn, primary) { var b = el("button", "btn" + (primary ? " primary" : ""), label); b.type = "button"; b.onclick = fn; a.appendChild(b); }
+    var o = el("a", "btn primary", "Open"); o.href = viewUrl(d); o.target = "_blank"; o.rel = "noopener"; a.appendChild(o);
+    btn("Download", function () { guard(d, "download", function (x) { window.open(downloadUrl(x), "_blank", "noopener"); }); });
+    btn("Email", function () { guard(d, "email", openMail); });
+    btn("Share", function () { guard(d, "share", openShare); });
+    btn("Mark as sent", function () { openSent(d); });
+    btn("Edit", function () { openEdit(d); });
+    c.appendChild(a);
+    return c;
+  }
+  function render() {
+    var m = $("main"); m.textContent = "";
+    var tags = {}; state.docs.forEach(function (d) { (d.tags || []).forEach(function (t) { tags[t] = 1; }); });
+    m.appendChild(chipRow("Project", "project", PROJECTS.filter(function (p) { return state.docs.some(function (d) { return d.project === p; }) || state.f.project === p; })));
+    m.appendChild(chipRow("Kind", "kind", KINDS.filter(function (k) { return state.docs.some(function (d) { return d.kind === k; }); })));
+    m.appendChild(chipRow("Status", "status", STATUSES));
+    var tl = Object.keys(tags).sort(); if (tl.length) m.appendChild(chipRow("Tag", "tag", tl));
+    waitBox(m);
+    var list = state.docs.filter(function (d) { return matches(d); });
+    var hidden = state.old ? 0 : state.docs.filter(function (d) { return d.status === "superseded" && matches(Object.assign({}, d, { status: "x" })); }).length;
+    m.appendChild(el("h2", null, list.length + " document" + (list.length === 1 ? "" : "s")));
+    if (!list.length) m.appendChild(el("p", "empty", state.docs.length ? "Nothing matches. Clear a filter or the search." : "No documents yet. Tap + Add to paste a Drive link."));
+    list.forEach(function (d) { m.appendChild(card(d)); });
+    if (hidden || state.old) {
+      var t = el("button", "toggle", state.old ? "Hide old versions" : "Show old versions (" + hidden + ")"); t.type = "button";
+      t.onclick = function () { state.old = !state.old; render(); }; m.appendChild(t);
+    }
+    var u = new URLSearchParams(); Object.keys(state.f).forEach(function (k) { if (state.f[k]) u.set(k, state.f[k]); }); if (state.q) u.set("q", state.q);
+    history.replaceState(null, "", location.pathname + (u.toString() ? "?" + u.toString() : ""));
+  }
+
+  // ---------- actions ----------
+  function openMail(d) {
+    $("mailName").textContent = "#" + d.id + " " + d.title;
+    $("mailDl").href = downloadUrl(d);
+    $("mailGo").href = "mailto:?subject=" + encodeURIComponent(d.title) + "&body=" + encodeURIComponent((d.description || "") + "\n\n");
+    $("mailDlg").showModal();
+  }
+  $("mailClose").onclick = function () { $("mailDlg").close(); };
+
+  var sharing = null;
+  function openShare(d) { sharing = d; $("shareName").textContent = "#" + d.id + " " + d.title; $("shareGo").style.display = navigator.share ? "" : "none"; $("shareDlg").showModal(); }
+  $("shareClose").onclick = function () { $("shareDlg").close(); };
+  $("shareGo").onclick = async function () {
+    try { await navigator.share({ title: sharing.title, url: viewUrl(sharing) }); $("shareDlg").close(); }
+    catch (e) { if (e && e.name !== "AbortError") copyLink(); }
+  };
+  $("shareCopy").onclick = copyLink;
+  async function copyLink() {
+    var u = viewUrl(sharing);
+    try { await navigator.clipboard.writeText(u); toast("Link copied"); $("shareDlg").close(); }
+    catch (e) { window.prompt("Copy this link:", u); }
+  }
+
+  var sentDoc = null;
+  function openSent(d) { sentDoc = d; $("sentName").textContent = "#" + d.id + " " + d.title; $("sentTo").value = d.sent_to || d.party || ""; $("sentErr").textContent = ""; $("sentDlg").showModal(); }
+  $("sentCancel").onclick = function () { $("sentDlg").close(); };
+  $("sentSave").onclick = async function () {
+    var to = $("sentTo").value.trim(); if (!to) { $("sentErr").textContent = "Say who it went to."; return; }
+    $("sentSave").disabled = true;
+    try { await api("PATCH", { id: sentDoc.id, action: "sent", sent_to: to }); $("sentDlg").close(); toast("Marked as sent"); await load(); }
+    catch (e) { $("sentErr").textContent = "Not saved: " + e.message; }
+    finally { $("sentSave").disabled = false; }
+  };
+  async function replied(d) {
+    try { await api("PATCH", { id: d.id, action: "replied" }); toast("Reply logged"); await load(); } catch (e) { toast("Not saved: " + e.message); }
+  }
+
+  function fillSelect(id, values) { var s = $(id); s.textContent = ""; values.forEach(function (v) { var o = el("option", null, v); o.value = v; s.appendChild(o); }); }
+  fillSelect("eProj", PROJECTS); fillSelect("eKind", KINDS); fillSelect("eStatus", STATUSES);
+  function openEdit(d) {
+    state.editing = d || null;
+    $("edTitle").textContent = d ? "Edit #" + d.id : "Add a document";
+    $("eUrl").value = d ? viewUrl(d) : ""; $("eName").value = d ? d.title : ""; $("eDesc").value = d ? d.description : "";
+    $("eProj").value = d ? d.project : (state.f.project || "General"); $("eKind").value = d ? d.kind : "other";
+    $("eStatus").value = d ? d.status : "final"; $("eDate").value = d ? (d.doc_date || "") : ukDay(new Date());
+    $("eParty").value = d ? d.party : ""; $("eDue").value = d ? (d.due_on || "") : "";
+    $("eTags").value = d ? (d.tags || []).join(", ") : ""; $("eSup").value = d && d.supersedes_id ? d.supersedes_id : ""; $("eItem").value = d && d.item_id ? d.item_id : "";
+    $("eErr").textContent = ""; $("edDlg").showModal();
+  }
+  $("addBtn").onclick = function () { openEdit(null); };
+  $("eCancel").onclick = function () { $("edDlg").close(); };
+  $("eSave").onclick = async function () {
+    var d = state.editing;
+    var body = { title: $("eName").value, description: $("eDesc").value, project: $("eProj").value, kind: $("eKind").value, status: $("eStatus").value,
+      doc_date: $("eDate").value, party: $("eParty").value, due_on: $("eDue").value, tags: $("eTags").value, supersedes_id: $("eSup").value, item_id: $("eItem").value };
+    var url = $("eUrl").value.trim();
+    if (!d || url !== viewUrl(d)) body.drive_url = url;
+    if (!body.title.trim()) { $("eErr").textContent = "Give it a title."; return; }
+    $("eSave").disabled = true;
+    try {
+      if (d) { body.id = d.id; await api("PATCH", body); } else await api("POST", body);
+      $("edDlg").close(); toast(d ? "Saved" : "Added"); await load();
+    } catch (e) { $("eErr").textContent = "Not saved: " + e.message; }
+    finally { $("eSave").disabled = false; }
+  };
+
+  var qt; $("q").value = state.q;
+  $("q").addEventListener("input", function () { clearTimeout(qt); qt = setTimeout(function () { state.q = $("q").value; render(); }, 150); });
+  load();
+})();
+</script>
+</body>
+</html>
