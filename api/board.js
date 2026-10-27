@@ -25,7 +25,7 @@ export default async function (req, res) {
   // Documents strip on Home and chips on items (27 Oct 2026). A failure here never stops the board loading.
   let docs = { recent: [], waiting: 0, by_item: [] };
   try {
-    const recent = await db.query("SELECT x.id, x.title, x.project, x.status, x.doc_date, x.created_at FROM (" + DOC_SELECT + ") x WHERE x.status <> 'superseded' ORDER BY x.created_at DESC, x.id DESC LIMIT 5");
+    const recent = await db.query("SELECT x.id, x.title, x.project, x.status, x.doc_date, x.created_at FROM (" + DOC_SELECT + ") x WHERE x.status <> 'superseded' ORDER BY COALESCE(x.doc_date::date, (x.created_at AT TIME ZONE 'Europe/London')::date) DESC, x.id DESC LIMIT 5");
     const waiting = await db.query("SELECT count(*)::int AS n FROM (" + DOC_SELECT + ") x WHERE " + DOC_WAITING);
     const byItem = await db.query("SELECT x.id, x.item_id, x.title, x.status FROM (" + DOC_SELECT + ") x WHERE x.item_id IS NOT NULL ORDER BY x.id");
     docs = { recent: recent.rows, waiting: waiting.rows[0].n, by_item: byItem.rows };
