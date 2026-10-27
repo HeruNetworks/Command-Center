@@ -64,7 +64,8 @@ export default async function (req, res) {
     const f = await uploadJpeg(await checklistFolder(item), name, bytes);
     out.drive_id = f.id;
   } catch (e) {
-    out.drive_error = e && e.code === "SetupRequired" ? "Google Drive is not connected yet (Setup page)" : String((e && e.message) || e).slice(0, 200);
+    const msg = String((e && e.message) || e);
+    out.drive_error = (e && e.code === "SetupRequired") || /not connected/i.test(msg) ? "Google Drive is not connected yet (Setup page)" : msg.slice(0, 200);
   }
   return res.json(out);
 }

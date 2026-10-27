@@ -2,6 +2,17 @@
 
 Read this file, list_deployments, and re-read any live file before editing. This project is private and its APIs are admin-only. Do not loosen access or publish account data to public files.
 
+## 27 Oct 2026 — v40-v41 — Claude (Claude Code session) — checklist photos copied to Google Drive
+
+Mario chose Drive for checklist photos. Restore point: v39 (GitHub commit 96450d1). This code: commit after 79c2d1d.
+- hatchable.toml: [[api]] google_drive (oauth2, drive scope), same block as Cable Log and ShiftLog. NOT CONNECTED until Mario clicks Connect on this project's Setup page (sign in as mario@herunetworks.co.uk). Cable Log's connection works, so the Google app credentials should be reused.
+- lib/drive.js (new): folder find-or-create (ids cached in meta key drive_folder:<parent>:<name>), binary multipart JPEG upload (same as Cable Log lib/drive.js). Only adds; never deletes, moves or shares. PROJECT_FOLDERS maps ZS Cabling to "05 ZS Cabling (admin we do for them)"; other projects use 00 Inbox until Mario names folders.
+- api/photos.js: every photo is still stored in app storage (thumbnails), then copied to Drive: <project folder>/Checklist photos/#<item> <title>/"<full name> - <date> - <what> - <HHMMSS>.jpg". Drive failure never loses the photo: response has drive_error. POST {item_id, retry_key, ...} copies a saved photo later. Photo objects carry drive_id (kept by checklist_save).
+- public/checklist.html: thumbnails open the Drive copy when there is one; "Copy to Drive (n)" on rows with photos not yet in Drive; message when Drive is not connected.
+- Test data: two tiny test JPEGs in app storage under checklists/576/ (not on any row, not in Drive).
+
+Tested: local Playwright 320/390/1440 (Drive not connected message, Copy to Drive, Drive link on thumbnail, no overflow or errors). Live: upload 200 with drive_error while not connected, unsaved retry_key 404, anonymous 401. Not tested: a real Drive upload (needs Mario's Connect), real phone camera.
+
 ## 27 Oct 2026 — v38 — Claude (Claude Code session) — checklist photos and full names
 
 Mario asked for photos taken straight from the checklist and full names always. Restore point: v37 (GitHub commit 44d37d6). This code: commit c36f890.
