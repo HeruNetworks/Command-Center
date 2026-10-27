@@ -125,7 +125,11 @@ export default async function (req, res) {
       r = r || {};
       return {
         person: cleanText(r.person, 80), date: okDate(r.date) || "", look_for: cleanText(r.look_for, 300),
-        result: CHECK_RESULTS.indexOf(r.result) >= 0 ? r.result : "", note: cleanText(r.note, 300)
+        result: CHECK_RESULTS.indexOf(r.result) >= 0 ? r.result : "", note: cleanText(r.note, 300),
+        // Photos (27 Oct 2026): only keys this checklist's own uploads could have made.
+        photos: (Array.isArray(r.photos) ? r.photos : []).filter(function (ph) {
+          return ph && typeof ph.key === "string" && new RegExp("^checklists/" + id + "/[0-9a-f-]{36}\\.jpg$").test(ph.key);
+        }).slice(0, 20).map(function (ph) { return { key: ph.key, at: okDate(String(ph.at || "").slice(0, 10)) ? String(ph.at).slice(0, 25) : "" }; })
       };
     }).filter(function (r) { return r.person || r.look_for; });
     const r = await db.query("UPDATE items SET checklist_rows = $1::jsonb, kind = 'checklist' WHERE id = $2", [JSON.stringify(rows), id]);

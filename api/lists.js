@@ -15,7 +15,12 @@ export default async function (req, res) {
       "SELECT i.id, i.project, i.kind, i.text, i.due_on::text AS due_on, i.done, i.checklist_rows, c.url AS chat_url FROM items i LEFT JOIN chats c ON c.id = i.chat_id WHERE i.id = $1", [id]
     );
     if (!r.rows.length) return res.status(404).json({ error: "Item not found" });
-    return res.json({ item: r.rows[0] });
+    // Full names already used, offered as suggestions so names stay whole and searchable.
+    const people = await db.query(
+      "SELECT DISTINCT p FROM (SELECT jsonb_array_elements(checklist_rows)->>'person' AS p FROM items WHERE jsonb_array_length(checklist_rows) > 0 UNION SELECT payee FROM items WHERE payee <> '') x " +
+      "WHERE p ~ '^[^ ]+ [^ ]+' AND p NOT ILIKE '%MISSING%' ORDER BY 1 LIMIT 300"
+    );
+    return res.json({ item: r.rows[0], people: people.rows.map(function (x) { return x.p; }) });
   }
   if (q.pay === "1") {
     const today = ukToday(), friday = payFriday();

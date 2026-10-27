@@ -18,6 +18,13 @@
   .rm { background: none; border: 0; color: var(--muted); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 6px 0 0; }
   .sum { font-size: 14px; color: var(--muted); }
   .saving { font-size: 12px; color: var(--muted); min-height: 1em; }
+  .pics { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pics a { display: block; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--panel2); }
+  .pics img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .rowacts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .rowacts .btn { flex: 1 1 120px; min-height: 40px; padding: 4px 8px; font-size: 13px; }
+  .who { background: none; border: 0; color: var(--text); font: inherit; font-weight: 700; padding: 0; cursor: pointer; text-align: left; }
+  .warn { color: var(--warn); font-size: 13px; min-height: 1em; margin: 4px 0 0; }
 </style>
 </head>
 <body>
@@ -33,20 +40,23 @@
   <form method="dialog" onsubmit="return false">
     <h3>Add a check</h3>
     <div class="row2">
-      <div><label for="aPerson">Person</label><input id="aPerson" maxlength="80"></div>
+      <div><label for="aPerson">Person (full name)</label><input id="aPerson" maxlength="80" list="people" autocomplete="off" placeholder="First and last name"></div>
       <div><label for="aDate">Date</label><input id="aDate" type="date"></div>
     </div>
+    <p class="warn" id="aWarn"></p>
     <label for="aWhat">What to look for</label><input id="aWhat" maxlength="300">
     <p class="err" id="aErr"></p>
     <div class="dacts"><button class="btn" type="button" id="aCancel">Cancel</button><button class="btn primary" type="button" id="aSave">Add</button></div>
   </form>
 </dialog>
+<datalist id="people"></datalist>
+<input type="file" id="cam" accept="image/*" capture="environment" hidden>
 <div class="toast" id="toast"></div>
 <script>
 (function () {
   "use strict";
   var id = parseInt(new URLSearchParams(location.search).get("id"), 10) || 0;
-  var item = null, rows = [], timer = null;
+  var item = null, rows = [], timer = null, people = [], camRow = null;
   var LABEL = { ok: "✓ OK", issue: "✗ Issue", na: "N/A" };
   function $(x) { return document.getElementById(x); }
   function el(t, c, s) { var e = document.createElement(t); if (c) e.className = c; if (s != null) e.textContent = s; return e; }
@@ -62,7 +72,8 @@
     try {
       var r = await fetch("/api/lists?checklist=" + id);
       if (!r.ok) throw new Error(r.status === 404 ? "item #" + id + " not found" : "error " + r.status);
-      item = (await r.json()).item; rows = Array.isArray(item.checklist_rows) ? item.checklist_rows : [];
+      var j = await r.json(); item = j.item; rows = Array.isArray(item.checklist_rows) ? item.checklist_rows : [];
+      people = j.people || []; var dl = $("people"); dl.textContent = ""; people.forEach(function (p) { var o = el("option"); o.value = p; dl.appendChild(o); });
       render();
     } catch (e) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "Could not load the checklist: " + e.message)); }
   }
@@ -75,6 +86,37 @@
       catch (e) { $("saving").textContent = "NOT saved: " + e.message + ". Tap any result again to retry."; }
     }, 500);
   }
+  async function saveNow() {
+    clearTimeout(timer); $("saving").textContent = "Saving...";
+    await post({ action: "checklist_save", id: id, rows: rows }); $("saving").textContent = "Saved";
+  }
+  // Full names only (Mario, 27 Oct 2026): a single word gets a warning and a full-name suggestion.
+  function nameWarning(v) {
+    v = String(v || "").trim(); if (!v || / /.test(v)) return "";
+    var hit = people.filter(function (p) { return p.toLowerCase().indexOf(v.toLowerCase() + " ") === 0; });
+    return "Use their full name (first and last)" + (hit.length ? ". Did you mean " + hit.slice(0, 3).join(" or ") + "?" : ".");
+  }
+  // Photos: shrink on the phone (longest side 1600 px, JPEG) so uploads are quick on site data.
+  async function shrink(file) {
+    var img;
+    try { img = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+    catch (e) { img = await new Promise(function (ok, bad) { var i = new Image(); i.onload = function () { ok(i); }; i.onerror = bad; i.src = URL.createObjectURL(file); }); }
+    var w = img.width, h = img.height, k = Math.min(1, 1600 / Math.max(w, h));
+    var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.8);
+  }
+  $("cam").onchange = async function () {
+    var f = $("cam").files[0], r = camRow; $("cam").value = ""; if (!f || !r) return;
+    $("saving").textContent = "Uploading photo...";
+    try {
+      var data = await shrink(f);
+      var res = await fetch("/api/photos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item_id: id, data: data }) });
+      if (!res.ok) { var t = "Error " + res.status; try { var e = await res.json(); if (e.error) t = e.error; } catch (x) {} throw new Error(t); }
+      var ph = await res.json(); r.photos = (r.photos || []).concat([ph]);
+      await saveNow(); render(); toast("Photo saved");
+    } catch (e) { $("saving").textContent = "Photo NOT saved: " + e.message + ". Try again."; }
+  };
   function render() {
     var m = $("main"); m.textContent = "";
     $("ttl").textContent = "Checklist #" + item.id;
@@ -89,7 +131,16 @@
     if (!rows.length) m.appendChild(el("p", "empty", "No checks yet. Tap Add a check."));
     rows.forEach(function (r, n) {
       var c = el("div", "card");
-      var mt = el("div", "meta"); if (r.person) mt.appendChild(el("b", null, r.person)); if (r.date) mt.appendChild(el("span", null, fmtDate(r.date))); c.appendChild(mt);
+      var mt = el("div", "meta");
+      var wb = el("button", "who", r.person || "Add person"); wb.type = "button"; wb.title = "Change the name";
+      wb.onclick = function () {
+        var v = prompt("Full name (first and last):", r.person || ""); if (v == null) return; v = v.trim();
+        var w = nameWarning(v); if (w && !confirm(w + "\n\nSave \"" + v + "\" anyway?")) return;
+        r.person = v; save(); render();
+      };
+      mt.appendChild(wb); if (r.date) mt.appendChild(el("span", null, fmtDate(r.date)));
+      if (nameWarning(r.person)) mt.appendChild(el("span", "badge issue", "FULL NAME?"));
+      c.appendChild(mt);
       c.appendChild(el("div", "what", r.look_for));
       var g = el("div", "res"); g.setAttribute("role", "group"); g.setAttribute("aria-label", "Result");
       ["ok", "issue", "na"].forEach(function (k) {
@@ -99,6 +150,15 @@
       c.appendChild(g);
       var note = el("input", "note"); note.placeholder = "Note (what you found)"; note.maxLength = 300; note.value = r.note || "";
       note.setAttribute("aria-label", "Note"); note.oninput = function () { r.note = note.value; save(); }; c.appendChild(note);
+      if (r.photos && r.photos.length) {
+        var pics = el("div", "pics");
+        r.photos.forEach(function (ph, k) { var a = el("a"); a.href = "/api/photos?key=" + encodeURIComponent(ph.key); a.target = "_blank"; a.rel = "noopener"; a.setAttribute("aria-label", "Photo " + (k + 1)); var im = el("img"); im.src = a.href; im.alt = "Photo " + (k + 1); im.loading = "lazy"; a.appendChild(im); pics.appendChild(a); });
+        c.appendChild(pics);
+      }
+      var ra = el("div", "rowacts");
+      var cb = el("button", "btn", "\ud83d\udcf7 Take photo" + (r.photos && r.photos.length ? " (" + r.photos.length + ")" : "")); cb.type = "button";
+      cb.onclick = function () { camRow = r; $("cam").click(); }; ra.appendChild(cb);
+      c.appendChild(ra);
       var rm = el("button", "rm", "Remove this check"); rm.type = "button";
       rm.onclick = function () { if (confirm("Remove this check?")) { rows.splice(n, 1); save(); render(); } }; c.appendChild(rm);
       m.appendChild(c);
@@ -115,11 +175,13 @@
     }
     m.appendChild(acts);
   }
-  function openAdd() { $("aPerson").value = ""; $("aDate").value = ""; $("aWhat").value = ""; $("aErr").textContent = ""; $("addDlg").showModal(); }
+  function openAdd() { $("aPerson").value = ""; $("aDate").value = ""; $("aWhat").value = ""; $("aErr").textContent = ""; $("aWarn").textContent = ""; $("addDlg").showModal(); }
+  $("aPerson").oninput = function () { $("aWarn").textContent = nameWarning($("aPerson").value); };
   $("aCancel").onclick = function () { $("addDlg").close(); };
   $("aSave").onclick = function () {
-    var r = { person: $("aPerson").value.trim(), date: $("aDate").value, look_for: $("aWhat").value.trim(), result: "", note: "" };
+    var r = { person: $("aPerson").value.trim(), date: $("aDate").value, look_for: $("aWhat").value.trim(), result: "", note: "", photos: [] };
     if (!r.look_for) { $("aErr").textContent = "Say what to look for."; return; }
+    var w = nameWarning(r.person); if (w && !confirm(w + "\n\nAdd \"" + r.person + "\" anyway?")) return;
     rows.push(r); $("addDlg").close(); save(); render();
   };
   load();
