@@ -173,6 +173,15 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
   .cc-doc small { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
   .badge.docchip { background: #23485a; color: #bfe8ff; text-decoration: none; }
   .badge.docchip.draft { background: #5a1f1f; color: #ffd0d0; }
+  /* Site checklists and ZS pay list (27 Oct 2026) */
+  .badge.chk { background: #23485a; color: #bfe8ff; }
+  .badge.pay { background: #1d4030; color: #c7f5d9; }
+  .cc-pins { margin: 14px 0; }
+  .cc-pins h2 { margin: 0 0 6px; }
+  .cc-pay { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 8px 12px; margin: 10px 0; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid #4dabf7; border-radius: 12px; color: var(--text); text-decoration: none; font-size: 14px; }
+  .cc-pay b { font-size: 16px; }
+  .cc-pay small { color: var(--muted); }
+  .cc-pay.hot { border-color: var(--warn); }
 </style><link rel="stylesheet" href="/board-skin.css?v=1">
 </head>
 <body>
@@ -198,7 +207,7 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     <textarea id="fText" rows="3" maxlength="500" placeholder="What needs doing or answering?"></textarea>
     <div class="row">
       <div><label for="fKind">Type</label>
-        <select id="fKind"><option value="action">To do</option><option value="question">Question</option><option value="deadline">Deadline</option><option value="waiting">Waiting on someone</option></select></div>
+        <select id="fKind"><option value="action">To do</option><option value="question">Question</option><option value="deadline">Deadline</option><option value="waiting">Waiting on someone</option><option value="checklist">Site checklist</option></select></div>
       <div><label for="fDue">Due (optional)</label><input id="fDue" type="date"></div>
     </div>
     <div id="fWhoBox" style="display:none"><label for="fWho">Waiting on who?</label><input id="fWho" maxlength="80" placeholder="e.g. Binghi, Ben Warren, the client"></div>
@@ -228,7 +237,7 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     <textarea id="eText" rows="3" maxlength="500"></textarea>
     <div class="row">
       <div><label for="eKind">Type</label>
-        <select id="eKind"><option value="action">To do</option><option value="question">Question</option><option value="deadline">Deadline</option><option value="waiting">Waiting on someone</option></select></div>
+        <select id="eKind"><option value="action">To do</option><option value="question">Question</option><option value="deadline">Deadline</option><option value="waiting">Waiting on someone</option><option value="checklist">Site checklist</option></select></div>
       <div><label for="eDue">Due</label><input id="eDue" type="date"></div>
     </div>
     <div id="eWhoBox" style="display:none">
@@ -287,6 +296,13 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     <button class="btn" type="button" id="aSkip">Skip, no answer</button>
     <button class="btn" type="button" id="aCancel">Cancel (leave it open)</button>
   </div>
+</dialog>
+<dialog id="pdDlg">
+  <h3 style="margin:0 0 4px">Mark as paid</h3>
+  <p class="small muted" id="pdWhat"></p>
+  <label for="pdOn">Date it was paid</label><input id="pdOn" type="date">
+  <p class="err" id="pdErr"></p>
+  <div class="row"><button class="btn" type="button" id="pdCancel">Cancel</button><button class="btn primary" type="button" id="pdSave">Save</button></div>
 </dialog>
 <div class="toast" id="toast"><span id="toastMsg"></span><button type="button" id="toastUndo" class="undo">Undo</button></div>
 
@@ -527,6 +543,43 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
       toast("Moved to " + STNAME[to], offerUndo ? function () { setStatus(c, old, false); } : null);
     } catch (e) { c.status = old; c.updated_at = oldU; render(); toast("Not saved: " + e.message); }
   }
+  // Site checklists and ZS pay list (27 Oct 2026).
+  function gbp(v) { return "\u00a3" + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function dueChecklists() { return state.data.items.filter(function (i) { return !i.done && i.kind === "checklist" && i.due_on && String(i.due_on).slice(0, 10) <= TODAY; }); }
+  function pinIds() { var m = {}; dueChecklists().forEach(function (i) { m[i.id] = true; }); return m; }
+  function checklistPins() {
+    var due = dueChecklists();
+    if (!due.length) return null;
+    var sec = el("section", "cc-pins"); sec.setAttribute("aria-label", "Checklists due today");
+    sec.appendChild(el("h2", null, "Checklists for today (" + due.length + ")"));
+    due.forEach(function (i) { sec.appendChild(itemRow(i)); });
+    return sec;
+  }
+  function payStrip() {
+    var p = state.data.pay; if (!p || !p.unpaid_n) return null;
+    var a = el("a", "cc-pay" + (p.due_friday_n ? " hot" : "")); a.href = "/pay.html";
+    var l = el("span"); l.appendChild(el("b", null, gbp(p.due_friday) + " due by Fri " + fmtDate(p.friday).replace(/^\w+ /, ""))); l.appendChild(document.createElement("br"));
+    l.appendChild(el("small", null, "ZS pay list: " + gbp(p.unpaid) + " unpaid in " + p.unpaid_n + " item" + (p.unpaid_n === 1 ? "" : "s")));
+    a.appendChild(l); a.appendChild(el("span", null, "\u203a")); return a;
+  }
+  var paidItem = null;
+  function askPaid(i) {
+    paidItem = i; $("pdWhat").textContent = "#" + i.id + " " + (i.payee || "") + " " + gbp(i.amount_gbp);
+    $("pdOn").value = TODAY; $("pdOn").max = TODAY; $("pdErr").textContent = ""; $("pdDlg").showModal();
+  }
+  async function unPaid(i) {
+    if (!confirm("Mark #" + i.id + " as NOT paid?")) return;
+    try { await api("update", { action: "pay_paid", id: i.id, paid: false }); toast("Undone"); await load(); } catch (e) { toast("Not saved: " + e.message); }
+  }
+  $("pdCancel").onclick = function () { $("pdDlg").close(); };
+  $("pdSave").onclick = async function () {
+    if (!$("pdOn").value) { $("pdErr").textContent = "Pick the date."; return; }
+    $("pdSave").disabled = true;
+    try { await api("update", { action: "pay_paid", id: paidItem.id, paid_on: $("pdOn").value }); $("pdDlg").close(); toast("Marked paid"); await load(); }
+    catch (e) { $("pdErr").textContent = "Not saved: " + e.message; }
+    finally { $("pdSave").disabled = false; }
+  };
+
   // Documents (27 Oct 2026): latest 5 on Home, plus a chip on any item a document is linked to.
   function docsData() { return (state.data && state.data.docs) || { recent: [], waiting: 0, by_item: [] }; }
   function docsFor(itemId) { return docsData().by_item.filter(function (x) { return x.item_id === itemId && x.status !== "superseded"; }); }
@@ -553,7 +606,9 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     var tk = el("button", "tick", i.done ? "✓" : "");
     tk.setAttribute("aria-label", i.done ? "Mark not done" : "Mark done");
     tk.onclick = function () {
-      if (!i.done) askAnswer(i, function (ans) { setDone(i, true, ans); }, true);
+      if (!i.done && i.amount_gbp != null && !i.paid_on) askPaid(i);
+      else if (!i.done) askAnswer(i, function (ans) { setDone(i, true, ans); }, true);
+      else if (i.paid_on) unPaid(i);
       else setDone(i, !i.done, "");
     };
     row.appendChild(tk);
@@ -570,6 +625,8 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
       meta.appendChild(el("span", "badge" + (gap <= 0 && !i.done ? " late" : " d"), gap < 0 ? "Overdue " + fmtDate(dd) : gap === 0 ? "Due today" : "Due " + fmtDate(dd)));
     }
     if (!i.done && i.created_at && i.kind !== "waiting") { var age = daysBetween(ukDay(i.created_at), TODAY); if (age >= 1) meta.appendChild(el("span", null, age + " day" + (age === 1 ? "" : "s") + " old")); }
+    if (i.kind === "checklist") { var cr = Array.isArray(i.checklist_rows) ? i.checklist_rows : [], cd = cr.filter(function (x) { return x.result; }).length; meta.appendChild(el("span", "badge chk", "CHECKLIST " + cd + "/" + cr.length)); }
+    if (i.amount_gbp != null) meta.appendChild(el("span", "badge pay", gbp(i.amount_gbp) + (i.payee ? " " + i.payee : "") + (i.paid_on ? " \u00b7 PAID " + fmtDate(i.paid_on) : i.pay_on ? " \u00b7 pay " + fmtDate(i.pay_on) : "")));
     docsFor(i.id).forEach(function (x) { var dc = el("a", "badge docchip" + (x.status === "draft" ? " draft" : ""), "DOC #" + x.id + (x.status === "draft" ? " DRAFT" : "")); dc.href = "/documents.html?id=" + x.id; dc.title = x.title; meta.appendChild(dc); });
     body.appendChild(meta);
     if (i.done && i.answer) {
@@ -582,6 +639,8 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
       var g = el("button", "btn primary", i.kind === "waiting" ? "Chase" : "Do it"); g.onclick = function () { doIt(i); }; mini.appendChild(g);
       var c = i.chat_id ? chatById(i.chat_id) : null;
       if (c && claudeUrl(c.url) && !inCard) { var a = el("a", "btn", "Open chat"); a.href = c.url; a.target = "_blank"; a.rel = "noopener"; mini.appendChild(a); }
+      if (i.kind === "checklist") { var ck = el("a", "btn", "Open checklist"); ck.href = "/checklist.html?id=" + i.id; mini.appendChild(ck); }
+      if (i.amount_gbp != null) { var pl = el("a", "btn", "Pay list"); pl.href = "/pay.html"; mini.appendChild(pl); }
       var ed = el("button", "btn", "Edit"); ed.type = "button"; ed.onclick = function () { openEdit(i); }; mini.appendChild(ed);
       body.appendChild(mini);
     }
@@ -709,10 +768,12 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     var hero=el("section","cc-hero"),heroText=el("div");
     heroText.appendChild(el("div","cc-kicker","HERU / COMMAND CENTRE"));heroText.appendChild(el("h2",null,"Your next move."));heroText.appendChild(el("p",null,"A clear view of what needs you, and everything you are building."));hero.appendChild(heroText);
     var universe=el("a","cc-universe","Explore your universe ↗");universe.href="/map.html";hero.appendChild(universe);add(hero);
+    var pins=checklistPins();if(pins)add(pins);
     var focus=el("section","cc-focus");focus.setAttribute("aria-label","Your next three actions");focus.appendChild(el("h2",null,"Mario, these need you"));focus.appendChild(el("p","cc-focus-rule","Overdue first, then due soon, then open questions."));
-    var seen={},priority=L.tOver.concat(L.tSoon,L.tQ).filter(function(i){if(seen[i.id])return false;seen[i.id]=true;return true}).slice(0,3),focusList=el("div","cc-priorities");
+    var seen=pinIds(),priority=L.tOver.concat(L.tSoon,L.tQ).filter(function(i){if(seen[i.id])return false;seen[i.id]=true;return true}).slice(0,3),focusList=el("div","cc-priorities");
     priority.forEach(function(i){focusList.appendChild(itemRow(i));});if(!priority.length)focusList.appendChild(el("p","empty","Nothing urgent here. Choose a project or open your task list."));focus.appendChild(focusList);add(focus);
     add(docStrip());
+    var ps=payStrip();if(ps)add(ps);
     var ns = (state.data.meta || {}).nudge_status;
     if (ns && String(ns.value).indexOf("FAILED") === 0) { var nb = el("div", "banner"); nb.appendChild(el("span", null, "07:00 email problem: " + ns.value + ". Ask Claude to check the Command Centre nudge.")); add(nb); }
     if (L.cWork.length) { heading("Claude working now (" + L.cWork.length + ")"); L.cWork.forEach(function (c) { add(chatCard(c)); }); }

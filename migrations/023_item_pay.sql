@@ -1,0 +1,2 @@
+-- ZS pay list (27 Oct 2026): pay details on an item. No bank details, ever.
+ALTER TABLE items ADD COLUMN IF NOT EXISTS amount_gbp NUMERIC(12,2), ADD COLUMN IF NOT EXISTS payee TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS invoice_ref TEXT NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS pay_on DATE, ADD COLUMN IF NOT EXISTS paid_on DATE

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checklist</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/lists.css?v=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  .what { font-size: 15px; margin: 2px 0 6px; overflow-wrap: anywhere; }
+  .res { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+  .res button { min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font-weight: 700; cursor: pointer; }
+  .res button.on.ok { background: var(--good); color: #062; border-color: var(--good); }
+  .res button.on.issue { background: var(--bad); color: #fff; border-color: var(--bad); }
+  .res button.on.na { background: var(--muted); color: #111; border-color: var(--muted); }
+  .note { margin-top: 6px; min-height: 40px; }
+  .rm { background: none; border: 0; color: var(--muted); font-size: 12px; text-decoration: underline; cursor: pointer; padding: 6px 0 0; }
+  .sum { font-size: 14px; color: var(--muted); }
+  .saving { font-size: 12px; color: var(--muted); min-height: 1em; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <a class="btn" href="/" aria-label="Back to the board">&larr; Board</a>
+    <h1 id="ttl">Checklist</h1>
+  </div>
+  <div class="saving" id="saving" aria-live="polite"></div>
+</header>
+<main id="main"><p class="empty">Loading...</p></main>
+<dialog id="addDlg">
+  <form method="dialog" onsubmit="return false">
+    <h3>Add a check</h3>
+    <div class="row2">
+      <div><label for="aPerson">Person</label><input id="aPerson" maxlength="80"></div>
+      <div><label for="aDate">Date</label><input id="aDate" type="date"></div>
+    </div>
+    <label for="aWhat">What to look for</label><input id="aWhat" maxlength="300">
+    <p class="err" id="aErr"></p>
+    <div class="dacts"><button class="btn" type="button" id="aCancel">Cancel</button><button class="btn primary" type="button" id="aSave">Add</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+<script>
+(function () {
+  "use strict";
+  var id = parseInt(new URLSearchParams(location.search).get("id"), 10) || 0;
+  var item = null, rows = [], timer = null;
+  var LABEL = { ok: "✓ OK", issue: "✗ Issue", na: "N/A" };
+  function $(x) { return document.getElementById(x); }
+  function el(t, c, s) { var e = document.createElement(t); if (c) e.className = c; if (s != null) e.textContent = s; return e; }
+  function fmtDate(s) { if (!s) return ""; var d = new Date(String(s).slice(0, 10) + "T12:00:00Z"); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); }
+  function toast(m) { var t = $("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = "none"; }, 2600); }
+  async function post(body) {
+    var r = await fetch("/api/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) { var t = "Error " + r.status; try { var j = await r.json(); if (j.error) t = j.error; } catch (e) {} throw new Error(t); }
+    return r.json();
+  }
+  async function load() {
+    if (!id) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "No checklist chosen. Open one from the board.")); return; }
+    try {
+      var r = await fetch("/api/lists?checklist=" + id);
+      if (!r.ok) throw new Error(r.status === 404 ? "item #" + id + " not found" : "error " + r.status);
+      item = (await r.json()).item; rows = Array.isArray(item.checklist_rows) ? item.checklist_rows : [];
+      render();
+    } catch (e) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "Could not load the checklist: " + e.message)); }
+  }
+  // Every change saves the whole list after a short pause.
+  function save() {
+    $("saving").textContent = "Saving...";
+    clearTimeout(timer);
+    timer = setTimeout(async function () {
+      try { await post({ action: "checklist_save", id: id, rows: rows }); $("saving").textContent = "Saved"; }
+      catch (e) { $("saving").textContent = "NOT saved: " + e.message + ". Tap any result again to retry."; }
+    }, 500);
+  }
+  function render() {
+    var m = $("main"); m.textContent = "";
+    $("ttl").textContent = "Checklist #" + item.id;
+    var head = el("div", "card"); head.appendChild(el("div", "what", item.text));
+    var done = rows.filter(function (r) { return r.result; }).length, iss = rows.filter(function (r) { return r.result === "issue"; }).length;
+    var meta = el("div", "meta"); meta.appendChild(el("span", null, item.project));
+    if (item.due_on) meta.appendChild(el("span", "badge soon", "Due " + fmtDate(item.due_on)));
+    if (item.done) meta.appendChild(el("span", "badge ok", "TICKED OFF"));
+    head.appendChild(meta);
+    head.appendChild(el("p", "sum", done + " of " + rows.length + " checked" + (iss ? ", " + iss + " with an issue" : "")));
+    m.appendChild(head);
+    if (!rows.length) m.appendChild(el("p", "empty", "No checks yet. Tap Add a check."));
+    rows.forEach(function (r, n) {
+      var c = el("div", "card");
+      var mt = el("div", "meta"); if (r.person) mt.appendChild(el("b", null, r.person)); if (r.date) mt.appendChild(el("span", null, fmtDate(r.date))); c.appendChild(mt);
+      c.appendChild(el("div", "what", r.look_for));
+      var g = el("div", "res"); g.setAttribute("role", "group"); g.setAttribute("aria-label", "Result");
+      ["ok", "issue", "na"].forEach(function (k) {
+        var b = el("button", k + (r.result === k ? " on" : ""), LABEL[k]); b.type = "button"; b.setAttribute("aria-pressed", r.result === k);
+        b.onclick = function () { r.result = r.result === k ? "" : k; save(); render(); }; g.appendChild(b);
+      });
+      c.appendChild(g);
+      var note = el("input", "note"); note.placeholder = "Note (what you found)"; note.maxLength = 300; note.value = r.note || "";
+      note.setAttribute("aria-label", "Note"); note.oninput = function () { r.note = note.value; save(); }; c.appendChild(note);
+      var rm = el("button", "rm", "Remove this check"); rm.type = "button";
+      rm.onclick = function () { if (confirm("Remove this check?")) { rows.splice(n, 1); save(); render(); } }; c.appendChild(rm);
+      m.appendChild(c);
+    });
+    var acts = el("div", "acts");
+    var add = el("button", "btn", "+ Add a check"); add.type = "button"; add.onclick = openAdd; acts.appendChild(add);
+    if (!item.done && rows.length && done === rows.length) {
+      var fin = el("button", "btn primary", "All checked: tick off #" + item.id); fin.type = "button";
+      fin.onclick = async function () {
+        try { await post({ action: "item_done", id: id, done: true, answer: iss ? iss + " issue(s) found; see checklist #" + id : "" }); toast("Ticked off"); await load(); }
+        catch (e) { toast("Not saved: " + e.message); }
+      };
+      acts.appendChild(fin);
+    }
+    m.appendChild(acts);
+  }
+  function openAdd() { $("aPerson").value = ""; $("aDate").value = ""; $("aWhat").value = ""; $("aErr").textContent = ""; $("addDlg").showModal(); }
+  $("aCancel").onclick = function () { $("addDlg").close(); };
+  $("aSave").onclick = function () {
+    var r = { person: $("aPerson").value.trim(), date: $("aDate").value, look_for: $("aWhat").value.trim(), result: "", note: "" };
+    if (!r.look_for) { $("aErr").textContent = "Say what to look for."; return; }
+    rows.push(r); $("addDlg").close(); save(); render();
+  };
+  load();
+})();
+</script>
+</body>
+</html>

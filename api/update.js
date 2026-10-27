@@ -1,5 +1,5 @@
 import { db } from "hatchable";
-import { STATUSES, KINDS, cleanText, okProject, okDate, okInt, ukToday } from "lib/rules.js";
+import { STATUSES, KINDS, CHECK_RESULTS, cleanText, okProject, okDate, okInt, okMoney, ukToday } from "lib/rules.js";
 
 export const access = "admin";
 export const methods = ["POST"];
@@ -115,6 +115,58 @@ export default async function (req, res) {
   if (action === "item_untriage") {
     if (!id) return res.status(400).json({ error: "Bad request" });
     const r = await db.query("UPDATE items SET triaged_at = NULL, outcome = '', done = false, done_at = NULL WHERE id = $1", [id]);
+    return res.json({ ok: r.rowCount === 1 });
+  }
+
+  // Site checklist (27 Oct 2026): save all rows of a checklist item at once.
+  if (action === "checklist_save") {
+    if (!id || !Array.isArray(b.rows) || b.rows.length > 100) return res.status(400).json({ error: "Bad request" });
+    const rows = b.rows.map(function (r) {
+      r = r || {};
+      return {
+        person: cleanText(r.person, 80), date: okDate(r.date) || "", look_for: cleanText(r.look_for, 300),
+        result: CHECK_RESULTS.indexOf(r.result) >= 0 ? r.result : "", note: cleanText(r.note, 300)
+      };
+    }).filter(function (r) { return r.person || r.look_for; });
+    const r = await db.query("UPDATE items SET checklist_rows = $1::jsonb, kind = 'checklist' WHERE id = $2", [JSON.stringify(rows), id]);
+    return res.json({ ok: r.rowCount === 1, rows: rows });
+  }
+
+  // ZS pay list (27 Oct 2026): amount, payee, invoice ref and pay date only. No bank details.
+  if (action === "pay_set") {
+    if (!id) return res.status(400).json({ error: "Bad request" });
+    const amount = okMoney(b.amount_gbp);
+    if (!amount) return res.status(400).json({ error: "Amount must be a number like 950.00" });
+    const r = await db.query(
+      "UPDATE items SET amount_gbp = $1, payee = $2, invoice_ref = $3, pay_on = $4 WHERE id = $5",
+      [amount, cleanText(b.payee, 80), cleanText(b.invoice_ref, 60), okDate(b.pay_on), id]
+    );
+    return res.json({ ok: r.rowCount === 1 });
+  }
+
+  // New pay item straight from the pay list.
+  if (action === "pay_add") {
+    const amount = okMoney(b.amount_gbp);
+    const payee = cleanText(b.payee, 80), ref = cleanText(b.invoice_ref, 60);
+    if (!amount || !payee) return res.status(400).json({ error: "Give a payee and an amount" });
+    const text = cleanText(b.text, 500) || ("Pay " + payee + (ref ? " " + ref : "") + " \u00a3" + amount);
+    const r = await db.query(
+      "INSERT INTO items (project, kind, text, due_on, source, waiting_on, amount_gbp, payee, invoice_ref, pay_on) VALUES ('ZS Cabling', 'action', $1, $2, 'phone', '', $3, $4, $5, $2) RETURNING id",
+      [text, okDate(b.pay_on), amount, payee, ref]
+    );
+    return res.json({ ok: true, id: r.rows[0].id });
+  }
+
+  // Ticking a pay item paid asks for the date; it also ticks the item off. paid = false undoes it.
+  if (action === "pay_paid") {
+    if (!id) return res.status(400).json({ error: "Bad request" });
+    if (b.paid === false) {
+      const r = await db.query("UPDATE items SET paid_on = NULL, done = false, done_at = NULL WHERE id = $1 AND amount_gbp IS NOT NULL", [id]);
+      return res.json({ ok: r.rowCount === 1 });
+    }
+    const on = okDate(b.paid_on);
+    if (!on || on > ukToday()) return res.status(400).json({ error: "Give the date it was paid (not in the future)" });
+    const r = await db.query("UPDATE items SET paid_on = $1, done = true, done_at = now() WHERE id = $2 AND amount_gbp IS NOT NULL", [on, id]);
     return res.json({ ok: r.rowCount === 1 });
   }
 

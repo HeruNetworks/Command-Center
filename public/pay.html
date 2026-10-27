@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pay list</title>
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/lists.css?v=1">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+  .tots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .tot { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  .tot b { display: block; font-size: 22px; }
+  .tot span { font-size: 12px; color: var(--muted); }
+  .tot.hot { border-color: var(--warn); }
+  .pl { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .pl .who { font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+  .pl .amt { font-weight: 700; font-size: 18px; flex: 0 0 auto; }
+  .txt { font-size: 13px; color: var(--muted); margin: 4px 0; overflow-wrap: anywhere; }
+  .rule { font-size: 12px; color: var(--muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <a class="btn" href="/" aria-label="Back to the board">&larr; Board</a>
+    <h1>ZS pay list</h1>
+    <button class="btn primary" type="button" id="addBtn">+ Add</button>
+  </div>
+</header>
+<main id="main"><p class="empty">Loading...</p></main>
+
+<dialog id="edDlg">
+  <form method="dialog" onsubmit="return false">
+    <h3 id="edTitle">Add a payment</h3>
+    <div class="row2">
+      <div><label for="pPayee">Payee</label><input id="pPayee" maxlength="80"></div>
+      <div><label for="pAmt">Amount (&pound;)</label><input id="pAmt" inputmode="decimal" placeholder="950.00"></div>
+    </div>
+    <div class="row2">
+      <div><label for="pRef">Invoice ref</label><input id="pRef" maxlength="60"></div>
+      <div><label for="pOn">Pay on</label><input id="pOn" type="date"></div>
+    </div>
+    <p class="small muted">Amount, payee, invoice and date only. No bank details here.</p>
+    <p class="err" id="pErr"></p>
+    <div class="dacts"><button class="btn" type="button" id="pCancel">Cancel</button><button class="btn primary" type="button" id="pSave">Save</button></div>
+  </form>
+</dialog>
+<dialog id="paidDlg">
+  <h3>Mark as paid</h3>
+  <p class="small muted" id="paidWhat"></p>
+  <label for="paidOn">Date it was paid</label><input id="paidOn" type="date">
+  <p class="err" id="paidErr"></p>
+  <div class="dacts"><button class="btn" type="button" id="paidCancel">Cancel</button><button class="btn primary" type="button" id="paidSave">Save</button></div>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  var data = null, editing = null, paying = null;
+  function $(x) { return document.getElementById(x); }
+  function el(t, c, s) { var e = document.createElement(t); if (c) e.className = c; if (s != null) e.textContent = s; return e; }
+  function gbp(v) { return "£" + Number(v || 0).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function fmtDate(s) { if (!s) return ""; var d = new Date(String(s).slice(0, 10) + "T12:00:00Z"); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }); }
+  function toast(m) { var t = $("toast"); t.textContent = m; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = "none"; }, 2600); }
+  async function post(body) {
+    var r = await fetch("/api/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) { var t = "Error " + r.status; try { var j = await r.json(); if (j.error) t = j.error; } catch (e) {} throw new Error(t); }
+    return r.json();
+  }
+  async function load() {
+    try { var r = await fetch("/api/lists?pay=1"); if (!r.ok) throw new Error("error " + r.status); data = await r.json(); render(); }
+    catch (e) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "Could not load the pay list: " + e.message)); }
+  }
+  function tot(label, val, n, hot) { var t = el("div", "tot" + (hot ? " hot" : "")); t.appendChild(el("b", null, gbp(val))); t.appendChild(el("span", null, label + " (" + n + ")")); return t; }
+  function card(i) {
+    var paid = !!i.paid_on, c = el("div", "card" + (paid ? " done" : ""));
+    var pl = el("div", "pl"); pl.appendChild(el("span", "who", "#" + i.id + " " + (i.payee || "Payee MISSING"))); pl.appendChild(el("span", "amt", gbp(i.amount_gbp))); c.appendChild(pl);
+    var m = el("div", "meta");
+    if (i.invoice_ref) m.appendChild(el("span", null, i.invoice_ref));
+    if (paid) m.appendChild(el("span", "badge ok", "PAID " + fmtDate(i.paid_on)));
+    else if (!i.pay_on) m.appendChild(el("span", "badge", "NO PAY DATE"));
+    else if (i.pay_on < data.today) m.appendChild(el("span", "badge late", "Overdue " + fmtDate(i.pay_on)));
+    else m.appendChild(el("span", "badge" + (i.pay_on <= data.friday ? " soon" : ""), "Pay " + fmtDate(i.pay_on)));
+    c.appendChild(m);
+    c.appendChild(el("p", "txt", i.text));
+    var a = el("div", "acts");
+    if (!paid) { var p = el("button", "btn primary", "Mark paid"); p.type = "button"; p.onclick = function () { openPaid(i); }; a.appendChild(p); }
+    else { var u = el("button", "btn", "Not paid (undo)"); u.type = "button"; u.onclick = function () { unpay(i); }; a.appendChild(u); }
+    var e = el("button", "btn", "Edit"); e.type = "button"; e.onclick = function () { openEdit(i); }; a.appendChild(e);
+    c.appendChild(a);
+    return c;
+  }
+  function render() {
+    var m = $("main"), t = data.totals; m.textContent = "";
+    var g = el("div", "tots");
+    g.appendChild(tot("Due by Fri " + fmtDate(data.friday).replace(/^\w+ /, ""), t.due_friday, t.due_friday_n, t.due_friday_n > 0));
+    g.appendChild(tot("All unpaid", t.unpaid, t.unpaid_n, false));
+    m.appendChild(g);
+    var un = data.items.filter(function (i) { return !i.paid_on; }), pd = data.items.filter(function (i) { return i.paid_on; });
+    m.appendChild(el("h2", null, "Unpaid (" + un.length + ")"));
+    if (!un.length) m.appendChild(el("p", "empty", "Nothing to pay."));
+    un.forEach(function (i) { m.appendChild(card(i)); });
+    m.appendChild(el("h2", null, "Paid, last 60 days (" + pd.length + ", " + gbp(t.paid_60) + ")"));
+    pd.forEach(function (i) { m.appendChild(card(i)); });
+    m.appendChild(el("p", "rule", "Nothing is ever paid from this app. Pay from the bank, then tap Mark paid. A chat removes any calendar reminder once it sees the item paid."));
+  }
+  function openEdit(i) {
+    editing = i || null; $("edTitle").textContent = i ? "Edit #" + i.id : "Add a payment";
+    $("pPayee").value = i ? i.payee : ""; $("pAmt").value = i ? i.amount_gbp : ""; $("pRef").value = i ? i.invoice_ref : ""; $("pOn").value = i ? (i.pay_on || "") : (data ? data.friday : "");
+    $("pErr").textContent = ""; $("edDlg").showModal();
+  }
+  $("addBtn").onclick = function () { openEdit(null); };
+  $("pCancel").onclick = function () { $("edDlg").close(); };
+  $("pSave").onclick = async function () {
+    var b = { payee: $("pPayee").value.trim(), amount_gbp: $("pAmt").value.trim(), invoice_ref: $("pRef").value.trim(), pay_on: $("pOn").value };
+    if (!b.payee) { $("pErr").textContent = "Who is it for?"; return; }
+    if (!/^£?\s*[\d,]+(\.\d{1,2})?$/.test(b.amount_gbp)) { $("pErr").textContent = "Amount like 950.00"; return; }
+    $("pSave").disabled = true;
+    try { if (editing) { b.action = "pay_set"; b.id = editing.id; } else b.action = "pay_add"; await post(b); $("edDlg").close(); toast("Saved"); await load(); }
+    catch (e) { $("pErr").textContent = "Not saved: " + e.message; }
+    finally { $("pSave").disabled = false; }
+  };
+  function openPaid(i) { paying = i; $("paidWhat").textContent = "#" + i.id + " " + (i.payee || "") + " " + gbp(i.amount_gbp); $("paidOn").value = data.today; $("paidOn").max = data.today; $("paidErr").textContent = ""; $("paidDlg").showModal(); }
+  $("paidCancel").onclick = function () { $("paidDlg").close(); };
+  $("paidSave").onclick = async function () {
+    if (!$("paidOn").value) { $("paidErr").textContent = "Pick the date."; return; }
+    $("paidSave").disabled = true;
+    try { await post({ action: "pay_paid", id: paying.id, paid_on: $("paidOn").value }); $("paidDlg").close(); toast("Marked paid"); await load(); }
+    catch (e) { $("paidErr").textContent = "Not saved: " + e.message; }
+    finally { $("paidSave").disabled = false; }
+  };
+  async function unpay(i) {
+    if (!confirm("Mark #" + i.id + " as NOT paid?")) return;
+    try { await post({ action: "pay_paid", id: i.id, paid: false }); toast("Undone"); await load(); } catch (e) { toast("Not saved: " + e.message); }
+  }
+  load();
+})();
+</script>
+</body>
+</html>

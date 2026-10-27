@@ -1,5 +1,6 @@
 import { db } from "hatchable";
 import { DOC_SELECT, DOC_WAITING } from "lib/docs.js";
+import { payFriday } from "lib/rules.js";
 
 export const access = "admin";
 export const methods = ["GET"];
@@ -14,7 +15,7 @@ export default async function (req, res) {
     "ORDER BY COALESCE(last_active, created_at) DESC LIMIT 500"
   );
   const items = await db.query(
-    "SELECT id, chat_id, project, kind, text, due_on, done, done_at, created_at, triaged_at, outcome, waiting_on, waiting_since, answer, answer_synced_at " +
+    "SELECT id, chat_id, project, kind, text, due_on, done, done_at, created_at, triaged_at, outcome, waiting_on, waiting_since, answer, answer_synced_at, checklist_rows, amount_gbp, payee, invoice_ref, pay_on, paid_on " +
     "FROM items WHERE done = false OR done_at > now() - interval '14 days' " +
     "ORDER BY created_at ASC LIMIT 1000"
   );
@@ -30,5 +31,16 @@ export default async function (req, res) {
     const byItem = await db.query("SELECT x.id, x.item_id, x.title, x.status FROM (" + DOC_SELECT + ") x WHERE x.item_id IS NOT NULL ORDER BY x.id");
     docs = { recent: recent.rows, waiting: waiting.rows[0].n, by_item: byItem.rows };
   } catch (e) { docs.error = true; }
-  res.json({ chats: chats.rows, items: items.rows, apps: apps.rows, meta: m, docs: docs, now: new Date().toISOString() });
+  // ZS pay list totals for the Home strip (27 Oct 2026), worked out here, never on the phone.
+  let pay = null;
+  try {
+    const friday = payFriday();
+    const p = await db.query(
+      "SELECT COALESCE(SUM(amount_gbp) FILTER (WHERE paid_on IS NULL), 0)::text AS unpaid, count(*) FILTER (WHERE paid_on IS NULL)::int AS unpaid_n, " +
+      "COALESCE(SUM(amount_gbp) FILTER (WHERE paid_on IS NULL AND pay_on <= $1::date), 0)::text AS due_friday, count(*) FILTER (WHERE paid_on IS NULL AND pay_on <= $1::date)::int AS due_friday_n " +
+      "FROM items WHERE amount_gbp IS NOT NULL", [friday]
+    );
+    pay = Object.assign({ friday: friday }, p.rows[0]);
+  } catch (e) { pay = null; }
+  res.json({ chats: chats.rows, items: items.rows, apps: apps.rows, meta: m, docs: docs, pay: pay, now: new Date().toISOString() });
 }
