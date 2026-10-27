@@ -2,6 +2,18 @@
 
 Read this file, list_deployments, and re-read any live file before editing. This project is private and its APIs are admin-only. Do not loosen access or publish account data to public files.
 
+## 27 Oct 2026 — v33-v35 — Claude (Claude Code session) — Documents page and version guard
+
+Mario approved steps 1 and 2 of the Documents brief only (steps 3 checklist and 4 pay list need his go). Restore point: v32 (full code backup in Drive App Backups > Heru Command Centre > 2026-10-27-before-documents-page, and in GitHub HeruNetworks/Command-Center branch ccr-a88bf7ef-h7nhsp).
+- v33 step 1. New: migrations/020_documents.sql (table documents: an index of Drive files, never the files), 021_documents_idx.sql, lib/docs.js (kinds, statuses, DOC_SELECT, DOC_WAITING, driveId), api/documents.js (GET filters project/kind/status/tag/q/waiting, POST add, PATCH edit / action "sent" / action "replied"; access admin like the other routes), public/documents.html (search, filter chips, Waiting box, Open / Download / Email / Share / Mark as sent / Edit, old versions hidden). Changed additively: api/board.js returns docs {recent, waiting, by_item} inside a try/catch so the board never fails on it; public/index.html adds the Recent documents strip under "these need you" and DOC #n chips on items (docStrip, docsFor); api/map.js gives map_nodes rows of kind doc whose url contains /documents.html a live count and hides projects with none. map.html, universe.js, universe.css and theme.css untouched.
+- Superseding: a row is superseded if any row has supersedes_id = its id (worked out in DOC_SELECT, so rows inserted by SQL from a chat are covered); the API also stores status 'superseded' on the old row. replied_at column added (not in the brief) so "sent, no reply yet" can be cleared.
+- Email = two taps in a dialog (1 Download PDF, 2 open mailto draft with subject = title, body = description). No Drive link in the email. Nothing is sent from the app. Share = Web Share API with the Drive link plus warning, Copy link fallback.
+- v34 fix: list ORDER BY mixed text and date (500). Home strip sorts by document date.
+- v35 step 2: version guard in documents.html (Email/Share/Download on a replaced document offers the newest in the chain; drafts warn before Email or Share).
+- Data: documents #1-#6 backfilled (9-day ECMWF pack, EmbersTech INV-690, INV-690-2, INV-694, INV-696, INV-2026-0060). 8 map_nodes rows "Documents · <area>" (kind doc). Not backfilled (not found in Drive, asked Mario): the older 10-day pack and the EmbersTech statement of account DRAFT 27 Oct.
+
+Tested: local Playwright at 320/390/1440 with mocked API (no overflow, no page errors; add, mark sent, filters, old versions, guard chain and draft warning). Live: anonymous GET /api/documents, /api/board, /api/map return 401; owner GET/POST 200/201; supersede SQL checked; live screenshots of documents.html (320/390/1440), Home and Map via browser.screenshot. Not tested: physical phone Email/Share (Mario to try), PATCH from a real browser session.
+
 ## 27 Oct 2026 — v32 — ChatGPT / Codex — direct phone pinch zoom
 
 Mario requested pinch zoom instead of relying on +/- buttons. Restore point: v31.
