@@ -106,15 +106,33 @@
     c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
     return c.toDataURL("image/jpeg", 0.8);
   }
+  async function sendPhoto(body) {
+    var res = await fetch("/api/photos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) { var t = "Error " + res.status; try { var e = await res.json(); if (e.error) t = e.error; } catch (x) {} throw new Error(t); }
+    return res.json();
+  }
+  // Photos taken before Drive was connected (or when it failed) can be copied over later.
+  async function copyToDrive(r) {
+    var todo = (r.photos || []).filter(function (ph) { return !ph.drive_id; }), done = 0, err = "";
+    $("saving").textContent = "Copying " + todo.length + " photo(s) to Drive...";
+    for (var k = 0; k < todo.length; k++) {
+      try { var o = await sendPhoto({ item_id: id, retry_key: todo[k].key, person: r.person, date: r.date, look_for: r.look_for }); if (o.drive_id) { todo[k].drive_id = o.drive_id; done++; } else err = o.drive_error; }
+      catch (e) { err = e.message; }
+    }
+    if (done) await saveNow();
+    render();
+    $("saving").textContent = done + " of " + todo.length + " copied to Drive" + (err ? ". Problem: " + err : "");
+  }
   $("cam").onchange = async function () {
     var f = $("cam").files[0], r = camRow; $("cam").value = ""; if (!f || !r) return;
     $("saving").textContent = "Uploading photo...";
     try {
       var data = await shrink(f);
-      var res = await fetch("/api/photos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ item_id: id, data: data }) });
-      if (!res.ok) { var t = "Error " + res.status; try { var e = await res.json(); if (e.error) t = e.error; } catch (x) {} throw new Error(t); }
-      var ph = await res.json(); r.photos = (r.photos || []).concat([ph]);
-      await saveNow(); render(); toast("Photo saved");
+      var ph = await sendPhoto({ item_id: id, data: data, person: r.person, date: r.date, look_for: r.look_for });
+      var err = ph.drive_error; delete ph.drive_error;
+      r.photos = (r.photos || []).concat([ph]);
+      await saveNow(); render();
+      if (ph.drive_id) toast("Photo saved to Drive"); else { $("saving").textContent = "Photo saved in the app but NOT in Drive: " + err + ". Tap Copy to Drive later."; toast("Saved in app, not in Drive"); }
     } catch (e) { $("saving").textContent = "Photo NOT saved: " + e.message + ". Try again."; }
   };
   function render() {
@@ -152,12 +170,14 @@
       note.setAttribute("aria-label", "Note"); note.oninput = function () { r.note = note.value; save(); }; c.appendChild(note);
       if (r.photos && r.photos.length) {
         var pics = el("div", "pics");
-        r.photos.forEach(function (ph, k) { var a = el("a"); a.href = "/api/photos?key=" + encodeURIComponent(ph.key); a.target = "_blank"; a.rel = "noopener"; a.setAttribute("aria-label", "Photo " + (k + 1)); var im = el("img"); im.src = a.href; im.alt = "Photo " + (k + 1); im.loading = "lazy"; a.appendChild(im); pics.appendChild(a); });
+        r.photos.forEach(function (ph, k) { var a = el("a"); a.href = ph.drive_id ? "https://drive.google.com/file/d/" + encodeURIComponent(ph.drive_id) + "/view" : "/api/photos?key=" + encodeURIComponent(ph.key); a.target = "_blank"; a.rel = "noopener"; a.setAttribute("aria-label", "Photo " + (k + 1)); var im = el("img"); im.src = "/api/photos?key=" + encodeURIComponent(ph.key); im.alt = "Photo " + (k + 1); im.loading = "lazy"; a.appendChild(im); pics.appendChild(a); });
         c.appendChild(pics);
       }
       var ra = el("div", "rowacts");
       var cb = el("button", "btn", "\ud83d\udcf7 Take photo" + (r.photos && r.photos.length ? " (" + r.photos.length + ")" : "")); cb.type = "button";
       cb.onclick = function () { camRow = r; $("cam").click(); }; ra.appendChild(cb);
+      var notIn = (r.photos || []).filter(function (ph) { return !ph.drive_id; }).length;
+      if (notIn) { var cd = el("button", "btn", "Copy to Drive (" + notIn + ")"); cd.type = "button"; cd.onclick = function () { copyToDrive(r); }; ra.appendChild(cd); }
       c.appendChild(ra);
       var rm = el("button", "rm", "Remove this check"); rm.type = "button";
       rm.onclick = function () { if (confirm("Remove this check?")) { rows.splice(n, 1); save(); render(); } }; c.appendChild(rm);

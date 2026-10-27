@@ -129,7 +129,9 @@ export default async function (req, res) {
         // Photos (27 Oct 2026): only keys this checklist's own uploads could have made.
         photos: (Array.isArray(r.photos) ? r.photos : []).filter(function (ph) {
           return ph && typeof ph.key === "string" && new RegExp("^checklists/" + id + "/[0-9a-f-]{36}\\.jpg$").test(ph.key);
-        }).slice(0, 20).map(function (ph) { return { key: ph.key, at: okDate(String(ph.at || "").slice(0, 10)) ? String(ph.at).slice(0, 25) : "" }; })
+        }).slice(0, 20).map(function (ph) {
+          return { key: ph.key, at: okDate(String(ph.at || "").slice(0, 10)) ? String(ph.at).slice(0, 25) : "", drive_id: /^[A-Za-z0-9_-]{10,100}$/.test(String(ph.drive_id || "")) ? ph.drive_id : "" };
+        })
       };
     }).filter(function (r) { return r.person || r.look_for; });
     const r = await db.query("UPDATE items SET checklist_rows = $1::jsonb, kind = 'checklist' WHERE id = $2", [JSON.stringify(rows), id]);

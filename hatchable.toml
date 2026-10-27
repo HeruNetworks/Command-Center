@@ -5,3 +5,15 @@ name = "Heru Command Centre"
 [[cron]]
 path     = "/api/jobs/nudge"
 schedule = "0 6,7 * * 1-5"
+# 27 Oct 2026: checklist photos are copied into Google Drive (project folder > Checklist photos).
+# Same Google Drive connection as Cable Log and ShiftLog. Mario connects once on this project's Setup page
+# (sign in as mario@herunetworks.co.uk). Only adds files: never deletes, moves or shares anything in Drive.
+[[api]]
+name          = "google_drive"
+auth          = "oauth2"
+base_url      = "https://www.googleapis.com"
+authorize_url = "https://accounts.google.com/o/oauth2/v2/auth"
+token_url     = "https://oauth2.googleapis.com/token"
+scopes        = ["https://www.googleapis.com/auth/drive"]
+description   = "Copies checklist photos into Google Drive (project folder > Checklist photos). Sign in as mario@herunetworks.co.uk."
+required      = false
