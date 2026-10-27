@@ -2,6 +2,20 @@
 
 Read this file, list_deployments, and re-read any live file before editing. This project is private and its APIs are admin-only. Do not loosen access or publish account data to public files.
 
+## 27 Oct 2026 — v36 — Claude (Claude Code session) — site checklists and ZS pay list
+
+Mario said "Go" to steps 3 and 4. Restore point: v35 (exact files in GitHub HeruNetworks/Command-Center commit 5285dae; Drive note 2026-10-27-before-checklist-and-pay-list.md). Shipped in one deploy, not two.
+- migrations/022_item_checklist.sql: items.checklist_rows JSONB [{person, date, look_for, result "" | ok | issue | na, note}]. 023_item_pay.sql: items.amount_gbp NUMERIC(12,2), payee, invoice_ref, pay_on, paid_on. No bank details, ever.
+- lib/rules.js: KINDS gains "checklist"; CHECK_RESULTS, okMoney (server parses money), payFriday (today if Friday, else next Friday, UK).
+- api/update.js new actions: checklist_save (whole list, max 100 rows, sets kind checklist), pay_set, pay_add (new ZS Cabling item), pay_paid (paid_on date required, not future; also ticks the item; paid:false undoes).
+- api/lists.js (new, GET, admin): ?checklist=<id> and ?pay=1 (items, server totals: unpaid, due by Friday, paid last 60 days).
+- api/board.js: items select adds the new columns; pay totals for Home in a try/catch.
+- public/checklist.html, public/pay.html, public/lists.css (new). public/index.html: "Checklists for today" pinned above "these need you" (kept out of that list), ZS pay strip under Recent documents, CHECKLIST n/m and £ badges on items, Open checklist / Pay list buttons, ticking a pay item asks the paid date (pdDlg), Site checklist in the Add/Edit type lists.
+- Calendar: the app cannot touch it. A chat removes the reminder when it sees paid_on set (parked in skill_fixes for command-centre-update). Nothing is ever paid from the app.
+- Data: #576 converted to a checklist (10 rows from its text); #566 Andrii INV-0000013 £950.00 pay 30 Oct; #485 Archite SI-278 £3,645.00, no pay date (held until ZS says go).
+
+Tested: local Playwright 320/390/1440 with mocked API (pins, no duplicate in focus, badges, checklist save and result toggles, mark paid, add payment, no overflow, no page errors). Live: anonymous /api/lists 401; owner checklist_save, pay_set, lists?pay=1 200 with correct totals; screenshots of Home, checklist, pay list, map; no error logs. Not tested: physical phone.
+
 ## 27 Oct 2026 — v33-v35 — Claude (Claude Code session) — Documents page and version guard
 
 Mario approved steps 1 and 2 of the Documents brief only (steps 3 checklist and 4 pay list need his go). Restore point: v32 (full code backup in Drive App Backups > Heru Command Centre > 2026-10-27-before-documents-page, and in GitHub HeruNetworks/Command-Center branch ccr-a88bf7ef-h7nhsp).
