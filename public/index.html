@@ -183,6 +183,7 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
   .cc-pay small { color: var(--muted); }
   .cc-pay.hot { border-color: var(--warn); }
 </style><link rel="stylesheet" href="/board-skin.css?v=1">
+<script src="/offline.js"></script>
 </head>
 <body>
 <header>
@@ -384,6 +385,7 @@ pre.opener{font-size:15px}dialog label{font-size:15px}.pcard h3{font-size:17px}n
     if (!r.ok) { var t = "Error " + r.status; try { var j = await r.json(); if (j.error) t = j.error; } catch (e) {} throw new Error(t); }
     return r.json();
   }
+  window.addEventListener("hcc-synced", function () { load(); });
   async function load() {
     try { state.data = await api("board"); TODAY = ukDay(new Date()); render(); }
     catch (e) { $("main").innerHTML = ""; $("main").appendChild(el("p", "empty", "Could not load the board: " + e.message)); }

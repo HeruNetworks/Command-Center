@@ -26,6 +26,7 @@
   .who { background: none; border: 0; color: var(--text); font: inherit; font-weight: 700; padding: 0; cursor: pointer; text-align: left; }
   .warn { color: var(--warn); font-size: 13px; min-height: 1em; margin: 4px 0 0; }
 </style>
+<script src="/offline.js"></script>
 </head>
 <body>
 <header>
@@ -77,6 +78,8 @@
       render();
     } catch (e) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "Could not load the checklist: " + e.message)); }
   }
+  // Offline mode: once queued changes are sent, reload (unless a save is still waiting to go).
+  window.addEventListener("hcc-synced", function () { if ($("saving").textContent !== "Saving...") load(); });
   // Every change saves the whole list after a short pause.
   function save() {
     $("saving").textContent = "Saving...";
@@ -132,7 +135,8 @@
       var err = ph.drive_error; delete ph.drive_error;
       r.photos = (r.photos || []).concat([ph]);
       await saveNow(); render();
-      if (ph.drive_id) toast("Photo saved to Drive"); else { $("saving").textContent = "Photo saved in the app but NOT in Drive: " + err + ". Tap Copy to Drive later."; toast("Saved in app, not in Drive"); }
+      if (ph.queued) { delete ph.queued; $("saving").textContent = "No signal: photo saved on the phone. It uploads to Drive when you have signal."; toast("Saved on phone"); }
+      else if (ph.drive_id) toast("Photo saved to Drive"); else { $("saving").textContent = "Photo saved in the app but NOT in Drive: " + err + ". Tap Copy to Drive later."; toast("Saved in app, not in Drive"); }
     } catch (e) { $("saving").textContent = "Photo NOT saved: " + e.message + ". Try again."; }
   };
   function render() {
@@ -176,7 +180,7 @@
       var ra = el("div", "rowacts");
       var cb = el("button", "btn", "\ud83d\udcf7 Take photo" + (r.photos && r.photos.length ? " (" + r.photos.length + ")" : "")); cb.type = "button";
       cb.onclick = function () { camRow = r; $("cam").click(); }; ra.appendChild(cb);
-      var notIn = (r.photos || []).filter(function (ph) { return !ph.drive_id; }).length;
+      var notIn = (r.photos || []).filter(function (ph) { return !ph.drive_id && String(ph.key).indexOf("pending/") !== 0; }).length;
       if (notIn) { var cd = el("button", "btn", "Copy to Drive (" + notIn + ")"); cd.type = "button"; cd.onclick = function () { copyToDrive(r); }; ra.appendChild(cd); }
       c.appendChild(ra);
       var rm = el("button", "rm", "Remove this check"); rm.type = "button";
