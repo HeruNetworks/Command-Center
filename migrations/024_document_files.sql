@@ -1,0 +1,3 @@
+-- Send by reference (27 Oct 2026): a copy of each document's file kept in the app's private storage,
+-- so the server can attach it to an email; and a log of every email it went out in.
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_key TEXT, ADD COLUMN IF NOT EXISTS file_sha256 TEXT, ADD COLUMN IF NOT EXISTS file_bytes INTEGER, ADD COLUMN IF NOT EXISTS file_type TEXT, ADD COLUMN IF NOT EXISTS file_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS sends JSONB NOT NULL DEFAULT '[]'::jsonb

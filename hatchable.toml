@@ -17,3 +17,10 @@ token_url     = "https://oauth2.googleapis.com/token"
 scopes        = ["https://www.googleapis.com/auth/drive"]
 description   = "Copies checklist photos into Google Drive (project folder > Checklist photos). Sign in as mario@herunetworks.co.uk."
 required      = false
+
+# 27 Oct 2026: Send by reference. Document emails go out through ShiftLog (shiftlog.uk), which holds the same key.
+# Paste the SAME value here and on ShiftLog's Setup page. Until both are set, sending is refused (nothing breaks).
+[[secret]]
+name        = "DOC_RELAY_KEY"
+required    = false
+description = "Lets the Command Centre send document emails through ShiftLog. Same value as DOC_RELAY_KEY in ShiftLog."
