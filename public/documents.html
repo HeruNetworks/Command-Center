@@ -60,8 +60,21 @@
   .step { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
   .step b { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--panel2); display: inline-flex; align-items: center; justify-content: center; }
   .step .btn { flex: 1 1 auto; }
+  .filebar { font-size: 12px; margin-top: 6px; color: var(--muted); }
+  .filebar.has { color: var(--good, #8ce99a); }
+  .sendlog { font-size: 12px; margin-top: 4px; color: var(--muted); }
+  .sendlog.bad { color: var(--bad); }
+  .sdocs { display: flex; flex-direction: column; gap: 6px; margin: 6px 0; }
+  .sdoc { display: flex; gap: 8px; align-items: center; background: var(--panel2); border-radius: 10px; padding: 6px 8px; font-size: 13px; }
+  .sdoc span { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+  .sdoc .btn { min-height: 32px; padding: 2px 10px; flex: 0 0 auto; }
+  textarea { width: 100%; box-sizing: border-box; min-height: 180px; font: inherit; }
+  .sendword { font-size: 18px; text-align: center; letter-spacing: .1em; }
+  .prog { height: 6px; border-radius: 3px; background: var(--panel2); overflow: hidden; margin-top: 8px; display: none; }
+  .prog i { display: block; height: 100%; width: 0; background: var(--accent); }
   .toast { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; display: none; z-index: 20; }
 </style>
+<script src="/offline.js"></script>
 </head>
 <body>
 <header>
@@ -133,7 +146,28 @@
   <div class="dacts" id="gActs"></div>
 </dialog>
 
-<div class="toast" id="toast"></div>
+<dialog id="sendDlg">
+  <form method="dialog" onsubmit="return false">
+    <h3>Send by email</h3>
+    <p class="small muted">The files go as attachments from shiftlog.uk. Replies go to admin@shiftlog.uk. Nothing goes until you type send.</p>
+    <label>Documents attached</label>
+    <div class="sdocs" id="sDocs"></div>
+    <select id="sAdd" aria-label="Attach another document"></select>
+    <p class="small muted" id="sSize"></p>
+    <label for="sFrom">From (name shown)</label>
+    <select id="sFrom"><option>Heru Networks Ltd</option><option>ZS Cabling Ltd</option></select>
+    <label for="sTo">To (commas between addresses)</label><input id="sTo" type="email" multiple inputmode="email" autocomplete="off" placeholder="name@company.co.uk">
+    <label for="sCc">CC (optional)</label><input id="sCc" type="email" multiple inputmode="email" autocomplete="off">
+    <label for="sSubj">Subject</label><input id="sSubj" maxlength="200">
+    <label for="sText">Message</label><textarea id="sText" maxlength="20000"></textarea>
+    <label for="sWord">Read it through, then type <b>send</b></label><input id="sWord" class="sendword" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="send">
+    <p class="err" id="sErr"></p>
+    <div class="dacts"><button class="btn" type="button" id="sCancel">Cancel</button><button class="btn primary" type="button" id="sGo" disabled>Send email</button></div>
+  </form>
+</dialog>
+
+<input type="file" id="fileIn" accept="application/pdf,.pdf,image/jpeg,image/png,.docx,.xlsx" hidden>
+<div class="toast" id="toast"><span id="toastMsg"></span><div class="prog" id="prog"><i id="progBar"></i></div></div>
 
 <script>
 (function () {
@@ -152,7 +186,8 @@
   function fmtDate(s) { if (!s) return ""; var d = new Date(String(s).slice(0, 10) + "T12:00:00Z"); return isNaN(d) ? "" : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); }
   function ukDay(ts) { return new Date(ts).toLocaleDateString("en-CA", { timeZone: "Europe/London" }); }
   function dayOf(d) { return d.doc_date || ukDay(d.created_at); }
-  function toast(msg) { var t = $("toast"); t.textContent = msg; t.style.display = "block"; clearTimeout(toast.t); toast.t = setTimeout(function () { t.style.display = "none"; }, 2600); }
+  function toast(msg, stay) { var t = $("toast"); $("toastMsg").textContent = msg; t.style.display = "block"; clearTimeout(toast.t); if (!stay) { $("prog").style.display = "none"; toast.t = setTimeout(function () { t.style.display = "none"; }, 3200); } }
+  function kb(n) { n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
 
   async function api(method, body, query) {
     var opt = { method: method, headers: {} };
@@ -283,13 +318,22 @@
     if (d.supersedes_id) c.appendChild(el("p", "small muted", "Replaces #" + d.supersedes_id));
     if (d.sent_at) c.appendChild(el("p", "small muted", "Sent" + (d.sent_to ? " to " + d.sent_to : "") + " on " + fmtDate(ukDay(d.sent_at)) + (d.replied_at ? ", reply in " + fmtDate(ukDay(d.replied_at)) : "")));
     if (d.due_on) c.appendChild(el("p", "small muted", "Due " + fmtDate(d.due_on)));
+    c.appendChild(el("p", "filebar" + (d.has_file ? " has" : ""), d.has_file ? "📎 File kept in the app for sending (" + kb(d.file_bytes) + ")" : "No file in the app yet: tap Attach file to send it by email"));
+    var sends = Array.isArray(d.sends) ? d.sends : [];
+    if (sends.length) {
+      var last = sends[sends.length - 1], okN = sends.filter(function (s) { return s.ok; }).length;
+      c.appendChild(el("p", "sendlog" + (last.ok ? "" : " bad"), (last.ok ? "Emailed" : "FAILED to email") + " to " + (last.to || []).join(", ") + " on " + fmtDate(ukDay(last.at)) +
+        " " + new Date(last.at).toLocaleTimeString("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" }) + (okN > 1 ? " (sent " + okN + " times)" : "") + (last.ok ? "" : ": " + (last.error || ""))));
+    }
     if (d.item_id) { var it = el("a", "small", "Board item #" + d.item_id); it.href = "/"; c.appendChild(it); }
     var a = el("div", "acts");
     function btn(label, fn, primary) { var b = el("button", "btn" + (primary ? " primary" : ""), label); b.type = "button"; b.onclick = fn; a.appendChild(b); }
     var o = el("a", "btn primary", "Open"); o.href = viewUrl(d); o.target = "_blank"; o.rel = "noopener"; a.appendChild(o);
     btn("Download", function () { guard(d, "download", function (x) { window.open(downloadUrl(x), "_blank", "noopener"); }); });
-    btn("Email", function () { guard(d, "email", openMail); });
+    btn("Send", function () { guard(d, "email", openSend); }, true);
     btn("Share", function () { guard(d, "share", openShare); });
+    btn("My email app", function () { guard(d, "email", openMail); });
+    btn(d.has_file ? "Replace file" : "Attach file", function () { pickFile(d); });
     btn("Mark as sent", function () { openSent(d); });
     btn("Edit", function () { openEdit(d); });
     c.appendChild(a);
@@ -352,6 +396,113 @@
   async function replied(d) {
     try { await api("PATCH", { id: d.id, action: "replied" }); toast("Reply logged"); await load(); } catch (e) { toast("Not saved: " + e.message); }
   }
+
+  // ---------- Send by email (27 Oct 2026) ----------
+  // The server attaches the stored files and sends through ShiftLog. Nothing goes until "send" is typed.
+  var SIG = "\n\n-- \nMario Congo-Nyah\nDirector | Head of Acquisitions\n\nM  07733 823 920\nE  mario@herunetworks.co.uk\nW  www.herunetworks.co.uk\nA  124–128 City Road, London EC1V 2NX\n\n" +
+    "Heru Networks Ltd. Registered in England and Wales, company number 15734679. Registered office: 124–128 City Road, London EC1V 2NX.";
+  var MAX_SEND = 7 * 1024 * 1024;
+  var send = { ids: [], busy: false };
+  function sendDocs() { return send.ids.map(function (i) { return state.byId[i]; }).filter(Boolean); }
+  function defaultText() {
+    var list = sendDocs().map(function (d) { return "- " + d.title; }).join("\n");
+    return "Greetings ,\n\nPlease find attached:\n" + list + ($("sFrom").value === "Heru Networks Ltd" ? SIG : "");
+  }
+  function openSend(d) {
+    if (!d.has_file) {
+      ask("Attach the file first", "#" + d.id + " has no file kept in the app yet. Pick the file once (from your phone or Drive) and it can be sent from then on.", [
+        { label: "Cancel" }, { label: "Attach file", primary: true, fn: function () { pickFile(d); } }
+      ]);
+      return;
+    }
+    send.ids = [d.id]; send.touched = false;
+    $("sFrom").value = "Heru Networks Ltd";
+    $("sTo").value = ""; $("sCc").value = ""; $("sSubj").value = d.title; $("sWord").value = ""; $("sErr").textContent = "";
+    $("sText").value = defaultText();
+    drawSend(); $("sendDlg").showModal();
+  }
+  function drawSend() {
+    var box = $("sDocs"); box.textContent = "";
+    var total = 0;
+    sendDocs().forEach(function (d) {
+      total += Number(d.file_bytes) || 0;
+      var r = el("div", "sdoc"), t = el("span", null, "#" + d.id + " " + d.title + " · " + kb(d.file_bytes) + (d.status === "draft" ? " · DRAFT" : "") + (d.status === "superseded" ? " · OLD VERSION" : ""));
+      r.appendChild(t);
+      if (send.ids.length > 1) { var x = el("button", "btn", "Remove"); x.type = "button"; x.onclick = function () { send.ids = send.ids.filter(function (i) { return i !== d.id; }); refreshText(); drawSend(); }; r.appendChild(x); }
+      box.appendChild(r);
+    });
+    var s = $("sAdd"); s.textContent = "";
+    var o0 = el("option", null, "+ Attach another document"); o0.value = ""; s.appendChild(o0);
+    state.docs.filter(function (d) { return d.has_file && d.status !== "superseded" && d.status !== "draft" && send.ids.indexOf(d.id) < 0; })
+      .forEach(function (d) { var o = el("option", null, "#" + d.id + " " + d.title + " (" + kb(d.file_bytes) + ")"); o.value = d.id; s.appendChild(o); });
+    s.style.display = s.options.length > 1 && send.ids.length < 10 ? "" : "none";
+    $("sSize").textContent = send.ids.length + " file" + (send.ids.length === 1 ? "" : "s") + ", " + kb(total) + " together" + (total > MAX_SEND ? ": TOO BIG (limit 7 MB), remove one" : "");
+    gate();
+  }
+  // Keep the "Please find attached" list in step, unless the message has been typed over.
+  function refreshText() { if (!send.touched) $("sText").value = defaultText(); }
+  $("sAdd").onchange = function () { var v = parseInt(this.value, 10); if (v) { send.ids.push(v); refreshText(); drawSend(); } };
+  $("sFrom").onchange = refreshText;
+  $("sText").oninput = function () { send.touched = true; };
+  function gate() {
+    var total = sendDocs().reduce(function (a, d) { return a + (Number(d.file_bytes) || 0); }, 0);
+    $("sGo").disabled = send.busy || $("sWord").value.trim().toLowerCase() !== "send" || !send.ids.length || total > MAX_SEND;
+  }
+  $("sWord").oninput = gate;
+  $("sCancel").onclick = function () { $("sendDlg").close(); };
+  $("sGo").onclick = async function () {
+    if ($("sGo").disabled) return;
+    var docs = sendDocs();
+    var body = { doc_ids: send.ids, to: $("sTo").value, cc: $("sCc").value, subject: $("sSubj").value, text: $("sText").value, from_name: $("sFrom").value,
+      approved_by_mario: true, confirm: $("sWord").value.trim().toLowerCase(),
+      allow_old: docs.some(function (d) { return d.status === "superseded"; }), allow_draft: docs.some(function (d) { return d.status === "draft"; }) };
+    if (/Greetings ,/.test(body.text)) { $("sErr").textContent = "Add the name after Greetings."; return; }
+    send.busy = true; gate(); $("sErr").textContent = ""; $("sGo").textContent = "Sending...";
+    try {
+      var r = await fetch("/api/documents/send", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      var j = {}; try { j = await r.json(); } catch (e) {}
+      if (!r.ok || !j.ok) throw new Error(j.error || "Error " + r.status);
+      $("sendDlg").close(); toast("Sent to " + j.to.join(", ") + " from " + j.from); await load();
+    } catch (e) { $("sErr").textContent = e.message; }
+    finally { send.busy = false; $("sGo").textContent = "Send email"; $("sWord").value = ""; gate(); }
+  };
+
+  // ---------- Attach a file (kept in the app for sending) ----------
+  var fileFor = null;
+  function pickFile(d) { fileFor = d; $("fileIn").value = ""; $("fileIn").click(); }
+  function readPart(blob) {
+    return new Promise(function (ok, bad) {
+      var fr = new FileReader();
+      fr.onload = function () { var s = String(fr.result || ""); ok(s.slice(s.indexOf(",") + 1)); };
+      fr.onerror = function () { bad(new Error("Could not read the file")); };
+      fr.readAsDataURL(blob);
+    });
+  }
+  async function post(body) {
+    var r = await fetch("/api/documents/file", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    var j = {}; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) throw new Error(j.error || "Error " + r.status);
+    return j;
+  }
+  $("fileIn").onchange = async function () {
+    var f = this.files && this.files[0], d = fileFor;
+    if (!f || !d) return;
+    if (f.size > 10 * 1024 * 1024) { toast("Too large: " + kb(f.size) + " (max 10 MB)"); return; }
+    var PART = 1536 * 1024, parts = Math.max(1, Math.ceil(f.size / PART));
+    var up = (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, function (c) { return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16); }));
+    toast("Uploading " + f.name + "...", true); $("prog").style.display = "block"; $("progBar").style.width = "0";
+    try {
+      for (var i = 0; i < parts; i++) {
+        var data = await readPart(f.slice(i * PART, Math.min(f.size, (i + 1) * PART)));
+        await post({ id: d.id, upload_id: up, part: i, parts: parts, data: data });
+        $("progBar").style.width = Math.round((i + 1) / (parts + 1) * 100) + "%";
+      }
+      var j = await post({ id: d.id, upload_id: up, parts: parts, finish: true, file_name: f.name });
+      $("progBar").style.width = "100%";
+      toast("File kept for #" + d.id + " (" + kb(j.file_bytes) + ")");
+      await load();
+    } catch (e) { toast("Not saved: " + e.message); }
+  };
 
   function fillSelect(id, values) { var s = $(id); s.textContent = ""; values.forEach(function (v) { var o = el("option", null, v); o.value = v; s.appendChild(o); }); }
   fillSelect("eProj", PROJECTS); fillSelect("eKind", KINDS); fillSelect("eStatus", STATUSES);

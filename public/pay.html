@@ -19,6 +19,7 @@
   .txt { font-size: 13px; color: var(--muted); margin: 4px 0; overflow-wrap: anywhere; }
   .rule { font-size: 12px; color: var(--muted); margin-top: 10px; }
 </style>
+<script src="/offline.js"></script>
 </head>
 <body>
 <header>
@@ -69,6 +70,7 @@
     if (!r.ok) { var t = "Error " + r.status; try { var j = await r.json(); if (j.error) t = j.error; } catch (e) {} throw new Error(t); }
     return r.json();
   }
+  window.addEventListener("hcc-synced", function () { load(); });
   async function load() {
     try { var r = await fetch("/api/lists?pay=1"); if (!r.ok) throw new Error("error " + r.status); data = await r.json(); render(); }
     catch (e) { $("main").textContent = ""; $("main").appendChild(el("p", "empty", "Could not load the pay list: " + e.message)); }
