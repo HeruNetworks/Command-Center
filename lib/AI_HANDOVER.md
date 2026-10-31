@@ -2,6 +2,39 @@
 
 Read this file, list_deployments, and re-read any live file before editing. This project is private and its APIs are admin-only. Do not loosen access or publish account data to public files.
 
+## 31 Oct 2026 — v46 — Claude (Claude Code session) — 07:00 nudge moved to Telegram
+
+Mario asked to move the 07:00 email to the new Heru Books Bot (proj_0PHQdZRGfIHZ, @WhirlingMerlinBot). Restore point: v45 (nudge.js identical to GitHub herunetworks/command-center commit 8eecd21).
+- api/jobs/nudge.js only: after building the text, POSTs it to meta bot_notify_url with header x-bot-key = meta bot_notify_key. The bot stores only the key's SHA-256 and sends to active OWNERS only. If Telegram fails, the old email path runs unchanged; nudge_status says "Sent to Telegram" or "Sent by email (Telegram failed: ...)".
+- No schema change; two meta rows added (bot_notify_url, bot_notify_key). Never print or copy bot_notify_key.
+- Tested: force run -> sent via Telegram ("Board: 3 overdue").
+
+## 27 Oct 2026 — v42 — Claude (App Builder chat, session_01NVePquo1BVLg2QsWjCVTVN) — Send by reference (brief step 4)
+
+Mario said "Go" and chose shiftlog.uk as the sender for every document email (option 1). Restore point: v41 (= GitHub commit 8eecd21). Drive note: App Backups > Heru Command Centre > 2026-10-27-1700-before-send-by-reference - BACKUP-MANIFEST.md.
+- Why a relay: this project has no verified email domain, and @herunetworks.co.uk only allows Google to send. ShiftLog (proj_msHd9NEv31HI) owns shiftlog.uk, so it sends for us: new ShiftLog route api/relay/doc-mail (ShiftLog v88), same pattern as Heru Sign's sign-mail. Shared secret DOC_RELAY_KEY (new, optional) must be pasted with the SAME value on both projects' Setup pages; until then send returns 412.
+- Drive cannot be the source of the bytes: alt=media downloads fail through the google_drive proxy (tested 27 Oct, gateway 500). So each document's file is uploaded ONCE into app storage (docs/<id>/<uuid>.<ext>) and sent from there. Drive stays the main copy.
+- migrations/024_document_files.sql: documents.file_key, file_sha256, file_bytes, file_type, file_at, sends JSONB (log of every send attempt: at, ok, to, cc, subject, from, message_id, docs, error).
+- lib/docfiles.js (new): limits (file 10 MB, one email 7 MB / 10 files), type check by first bytes (PDF, JPEG, PNG, docx/xlsx by name), base64 via node:buffer.
+- api/documents/file.js (new, admin): POST parts {id, upload_id uuid, part, parts, data base64 <= ~2.9M chars} then {finish: true, file_name}; joins, checks type, sha256, stores, deletes parts and the old copy. GET ?id= -> 302 to a 60 s signed URL.
+- api/documents/send.js (new, admin): POST {doc_ids, to, cc, subject, text, from_name "Heru Networks Ltd" | "ZS Cabling Ltd", approved_by_mario: true, confirm: "send", allow_old, allow_draft, resend}. Refuses (403) without BOTH approval fields: a chat sets them ONLY after Mario typed "send" for that exact email. Refuses superseded/draft unless allowed, a repeat of the same email within 10 min (409), missing stored file (409), over 7 MB (413). Sends via relay, logs on every document, marks sent (draft/final -> sent).
+- lib/docs.js DOC_SELECT adds has_file, file_bytes, file_type, file_at, sends.
+- public/documents.html: buttons Open, Download, Send, Share, My email app (old mailto), Attach file / Replace file, Mark as sent, Edit. File line and send log on each card. Send dialog: documents list (+ attach another, old/draft excluded from the picker), From name, To, CC, Subject, Message prefilled "Greetings ," + list + Mario's signature (Heru only); blocks an empty Greetings name; Send stays disabled until "send" is typed. Version guard still runs first.
+- hatchable.toml: [[secret]] DOC_RELAY_KEY (required = false).
+- How a chat sends: upload with run_function POST /api/documents/file (small files only; big ones: Mario taps Attach file on his phone), show Mario the final email, wait for "send", then run_function POST /api/documents/send with approved_by_mario true and confirm "send".
+
+Tested: local Playwright 320/390/1440 with mocked API, 60/60 (no overflow, no errors, send gating, Greetings check, two docs, old version allow_old, 7 MB cap, 3.5 MB upload in 3 parts byte-identical). Live: anonymous send/file 401; no approval 403; no file 409; two-part upload out of order joined, sha256 matched; junk file 415; approved send 412 (no key yet); stored copy 302; base64 round trip checked; test file deleted and doc #6 restored. ShiftLog relay with a wrong key 404; sign-mail unchanged. NOT tested: a real send (needs the key, then Mario's "send"), a real phone upload.
+
+## 28 Oct 2026 — v44-v45 — Claude (Claude Code session) — offline mode (option B: read and edit with no signal)
+
+Mario chose option B (read and edit offline). Restore point: v43 (GitHub commit "Mirror live v43 files" on branch ccr-bc71b69f-u1x735). No API, schema or data changes.
+- public/sw.js (new): service worker. Pages/CSS/JS network first (4 s) else saved copy; GET /api/* network first (8 s) else saved copy with headers X-HCC-Offline and X-HCC-Saved-At; /api/documents/* (file downloads) never cached; /api/photos?key=pending/... served from the phone queue, other photos cached after first view. Bump VERSION when changing it.
+- public/offline.js (new, first script in the head of index, checklist, pay, documents, map, usage): wraps window.fetch. POSTs to /api/update and /api/photos made offline (or while anything is still queued) go into IndexedDB "hcc-offline" and get a made-up success reply; sent in order when online (online event, page open, every 30 s after a failure; one tab at a time via navigator.locks). item_add/pay_add offline get a negative temp id; photos get key pending/<uuid>.jpg; both are swapped for the real id/key when sent (maps in meta "ids"/"keys"). Pending changes are laid over saved /api/board and /api/lists data. 4xx = dropped and shown in a red banner; 401/403 = "Signed out, sign in again"; 5xx/network = retried. Documents and usage writes need signal (clear message).
+- Pages: index/pay/checklist reload on the "hcc-synced" event; checklist says "photo saved on the phone" and hides Copy to Drive for pending photos.
+- Known limits: last change wins (a whole checklist save offline overwrites edits made elsewhere meanwhile); nothing is sent until the board is opened again with signal (no background sync on iPhone); the board must have been opened once with signal on that phone.
+
+Tested: local Playwright 320/390/1440 with a mock API: offline reload shows saved board, checklist and pay list; offline add + tick of the new item + tick of an old item + checklist result + photo -> 5 queued -> online -> sent in order, temp id and photo key swapped, Drive id kept, thumbnail works before and after; rejected change shows red banner; no overflow or page errors. Live (v44-v45): all files deployed and hashes match the tested copies; signed-out requests to sw.js/pages redirect to the Hatchable login and /api/board gives 401 (unchanged). v45: sw.js leaves /__hatchable/ (sign-in) alone. Not tested: signed-in phone (Mario to test with flight mode), iPhone Safari.
+
 ## 27 Oct 2026 — v40-v41 — Claude (Claude Code session) — checklist photos copied to Google Drive
 
 Mario chose Drive for checklist photos. Restore point: v39 (GitHub commit 96450d1). This code: commit after 79c2d1d.
