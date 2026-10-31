@@ -65,16 +65,42 @@ export default async function (req, res) {
 
   if (dry) return res.json({ dry: true, subject: subject, text: text });
 
+  // 31 Oct 2026: send to Telegram (Heru Books Bot, owners only) first; email only if Telegram fails.
+  const tg = await sendTelegram("📋 " + subject + "\n\n" + text.replace(/^Greetings Mario,\n\n/, "").replace(/\n\nSent by your Command Centre[\s\S]*$/, ""));
+  if (tg.ok) {
+    await setMeta("nudge_last", today);
+    await setMeta("nudge_status", "Sent to Telegram " + today + ": " + parts.join(", "));
+    return res.json({ sent: true, via: "telegram", subject: subject });
+  }
+
   const to = await db.query("SELECT value FROM meta WHERE key = 'nudge_email'");
   const addr = to.rows.length && to.rows[0].value ? to.rows[0].value : "mario@herunetworks.co.uk";
   try {
     await email.send({ to: addr, subject: subject, text: text, html: html });
     await setMeta("nudge_last", today);
-    await setMeta("nudge_status", "Sent " + today + ": " + parts.join(", "));
+    await setMeta("nudge_status", "Sent by email (Telegram failed: " + tg.why + ") " + today + ": " + parts.join(", "));
     return res.json({ sent: true, subject: subject });
   } catch (e) {
     await setMeta("nudge_status", "FAILED " + today + ": " + String(e && e.message || e).slice(0, 200));
     return res.status(500).json({ sent: false, error: String(e && e.message || e) });
+  }
+}
+
+// Key and address live in the meta table (bot_notify_url, bot_notify_key); never in code.
+async function sendTelegram(msg) {
+  try {
+    const r = await db.query("SELECT key, value FROM meta WHERE key IN ('bot_notify_url', 'bot_notify_key')");
+    const m = {};
+    r.rows.forEach(function (x) { m[x.key] = x.value; });
+    if (!m.bot_notify_url || !m.bot_notify_key) return { ok: false, why: "bot link not set up" };
+    const resp = await fetch(m.bot_notify_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-bot-key": m.bot_notify_key },
+      body: JSON.stringify({ text: msg }),
+    });
+    return resp.ok ? { ok: true } : { ok: false, why: "HTTP " + resp.status };
+  } catch (e) {
+    return { ok: false, why: String(e && e.message || e).slice(0, 100) };
   }
 }
 
